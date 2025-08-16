@@ -1,0 +1,300 @@
+---
+title: 'Data Preprocessing'
+author: 'Tyler Kelly'
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE, 
+                      root.dir = rprojroot::find_rstudio_root_file())
+
+try(knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()))
+```
+
+# Import Libraries
+
+```{r, message=FALSE}
+library(tidyverse)
+library(word2vec)
+library(Rtsne)
+```
+
+# Load Dataset
+
+```{r, message=FALSE}
+# Remove _old when the sql is fixed
+nlp_ready_df <- read_csv('Data/Old/data_nlp_ready_old.csv')
+```
+
+```{r}
+head(nlp_ready_df)
+```
+
+# word2vec
+
+---From Chatgpt---
+If training is too resource-heavy, consider using pretrained embeddings like:
+
+* BioWordVec
+
+* ClinicalBERT (via Python or torch in R)
+
+You can load .bin or .txt pretrained vectors into R using word2vec::read.wordvectors().
+---
+
+## Radiology Notes Word2Vec Model
+
+In part 2 of the python_main.ipynb, I combine all notes of type 'radiology' together into one note per patient.
+In this part, I will use these long notes for vectorization.
+
+In a later part I will use Clinical BERT pretrained embeddings.
+
+```{r, eval=FALSE}
+set.seed(1234)
+rad_model <- word2vec::word2vec('Data/Old/W2V_old/w2v_Radiology_notes.txt', dim = 100, type = 'cbow', window = 5, iter = 10, threads = 6)
+```
+
+### Save the model
+
+```{r, eval=FALSE}
+write.word2vec(rad_model, 'rad_model.bin')
+```
+
+### Read back in
+
+```{r}
+rad_model     <- read.word2vec('rad_model.bin')
+rad_terms     <- summary(rad_model, 'vocabulary')
+embedding_rad <- as.matrix(rad_model)
+```
+
+### View Head Embeddings
+
+```{r}
+head(embedding_rad)
+```
+
+### Visualize with tSNE
+
+```{r}
+tsne <- Rtsne(embedding_rad[1:500, ], dims = 2, perplexity = 30)
+plot_df <- data.frame(tsne$Y, word = rownames(embedding_rad)[1:500])
+ggplot(plot_df, aes(x = X1, y = X2, label = word)) +
+  geom_text(size = 3) +
+  theme_minimal()
+```
+
+### Assemble Radiology Embedded Dataset for Model Training
+
+#### Define Embedding Function
+
+```{r}
+# Using Chatgpt
+
+# Tokenize text per subject
+
+get_subject_embedding <- function(doc, model_matrix) {
+  words <- unlist(strsplit(tolower(doc), '\\s+'))  # tokenize
+  valid_words <- intersect(words, rownames(model_matrix))  # keep only known words
+  if (length(valid_words) == 0) return(rep(0, ncol(model_matrix)))  # handle empty case
+  word_vectors <- model_matrix[valid_words, , drop = FALSE]
+  colMeans(word_vectors)  # average across words
+}
+```
+
+#### Apply Function to `nlp_ready_df`
+
+```{r, eval=FALSE}
+# Using Chatgpt
+
+# This returns a matrix: each row is a subject’s averaged embedding
+rad_embeddings <- t(sapply(nlp_ready_df$`Radiology_notes`, get_subject_embedding, model_matrix = embedding_rad))
+```
+
+#### Convert embeddings to a df for joining
+
+```{r, eval=FALSE}
+# Using Chatgpt
+
+rad_embeddings_df <- as.data.frame(rad_embeddings)
+colnames(rad_embeddings_df) <- paste0('w2v_rad_', seq_len(ncol(rad_embeddings_df)))
+```
+
+#### Add subject ids back
+
+```{r, eval=FALSE}
+# Using Chatgpt
+
+rad_embeddings_df$subject_id <- nlp_ready_df$subject_id
+```
+
+#### Merge embeddings_df with feature dataset, nlp_ready_df
+
+```{r, eval=FALSE}
+# Using Chatgpt
+
+data_w2v_rad <- left_join(nlp_ready_df, rad_embeddings_df, by = 'subject_id')
+
+```
+
+#### Check new feature dataset including embeddings
+
+```{r}
+head(data_w2v_rad)
+```
+
+
+### Save Radiology Embedded Dataset
+
+The saved file below contains an *unstandardized* dataset consisting of the original dataset, along with the 3 new text columns, and the 100 new w2v embeddings per subject. It gets passed to the `Sepsis Model Training` file for further processing, including using SMOTE, and then actual model training begins.
+
+```{r, eval=TRUE}
+write.csv(data_w2v_rad, 'Data/Old/W2V_old/data_w2v_radiology_old.csv', row.names = FALSE)
+```
+
+
+
+## Combined notes Word2Vec Model
+
+```{r}
+set.seed(1234)
+combined_model <- word2vec::word2vec('w2v_combined_notes.txt', dim = 100, type = 'cbow', window = 5, iter = 10, threads = 6)
+```
+
+
+### Save the combined model
+
+```{r}
+write.word2vec(combined_model, 'combined_model.bin')
+```
+
+### Read back in the combined
+
+```{r}
+combined_model     <- read.word2vec('combined_model.bin')
+combined_terms     <- summary(combined_model, 'vocabulary')
+embedding_combined <- as.matrix(combined_model)
+```
+
+### Visualize Combined Notes Terms with tSNE
+
+```{r}
+tsne <- Rtsne(embedding_combined[1:500, ], dims = 2, perplexity = 30)
+plot_df <- data.frame(tsne$Y, word = rownames(embedding_combined)[1:500])
+ggplot(plot_df, aes(x = X1, y = X2, label = word)) +
+  geom_text(size = 3) +
+  theme_minimal()
+```
+
+
+
+
+
+# Word2Vec Using Clinical Bert Embeddings
+
+It may be wiser to just use Python gensim for this part.
+
+
+
+
+
+# More Ideas from the word2vec help page
+
+## Using another example, we get the embeddings of words together with parts of speech tag (Look to the help of the udpipe R package to easily get parts of speech tags on text)
+
+```{r}
+"""
+library(udpipe)
+data(brussels_reviews_anno, package = 'udpipe')
+x <- subset(brussels_reviews_anno, language == 'fr' & !is.na(lemma) & nchar(lemma) > 1)
+x <- subset(x, xpos %in% c('NN', 'IN', 'RB', 'VB', 'DT', 'JJ', 'PRP', 'CC',
+                           'VBN', 'NNP', 'NNS', 'PRP$', 'CD', 'WP', 'VBG', 'UH', 'SYM'))
+x$text <- sprintf('%s//%s', x$lemma, x$xpos)
+x <- paste.data.frame(x, term = 'text', group = 'doc_id', collapse = ' ')
+
+model     <- word2vec(x = x$text, dim = 15, iter = 20, split = c(' ', '.\n?!'))
+embedding <- as.matrix(model)
+"""
+```
+
+## Perform dimension reduction using UMAP + make interactive plot of only the adjectives for example
+
+```{r}
+"""
+library(uwot)
+viz <- umap(embedding, n_neighbors = 15, n_threads = 2)
+
+## Static plot
+library(ggplot2)
+library(ggrepel)
+df  <- data.frame(word = gsub('//.+', '', rownames(embedding)), 
+                  xpos = gsub('.+//', '', rownames(embedding)), 
+                  x = viz[, 1], y = viz[, 2], 
+                  stringsAsFactors = FALSE)
+df  <- subset(df, xpos %in% c('JJ'))
+ggplot(df, aes(x = x, y = y, label = word)) + 
+  geom_text_repel() + theme_void() + 
+  labs(title = 'word2vec - adjectives in 2D using UMAP')
+
+## Interactive plot
+library(plotly)
+plot_ly(df, x = ~x, y = ~y, type = 'scatter', mode = 'text', text = ~word)
+"""
+```
+
+## Pre-trained Models
+
+Note that the framework is compatible with the original word2vec model implementation. In order to use external models which are not trained and saved with this R package, you need to set normalize=TRUE in read.word2vec. This holds for models e.g. trained with gensim or the models made available through R package sentencepiece
+Example below using a pretrained model available for English at https://github.com/maxoodf/word2vec#basic-usage
+
+```{r}
+"""
+model <- read.word2vec(file = 'cb_ns_500_10.w2v', normalize = TRUE)
+"""
+```
+
+
+## You can build a word2vec model by providing a tokenised list
+
+```{r}
+"""
+library(quanteda)
+library(word2vec)
+data('data_corpus_inaugural', package = 'quanteda')
+toks <- data_corpus_inaugural %>% 
+    corpus_reshape(to = 'sentences') %>%
+    tokens(remove_punct = TRUE, remove_symbols = TRUE) %>%
+    tokens_tolower() %>%
+    as.list()
+    
+"""
+```
+
+```{r}
+"""
+set.seed(54321)
+model <- word2vec(toks, dim = 25, iter = 20, min_count = 3, type = 'skip-gram', lr = 0.05)
+emb   <- as.matrix(model)
+predict(model, c('freedom', 'constitution', 'president'), type = 'nearest', top_n = 5)
+"""
+```
+
+
+## You can build a word2vec model by providing a tokenised list of token id’s or subwords in order to feed the embeddings of these into deep learning models
+
+```{r}
+"""
+library(tokenizers.bpe)
+library(word2vec)
+data(belgium_parliament, package = 'tokenizers.bpe')
+x <- subset(belgium_parliament, language == 'french')
+x <- x$text
+tokeniser <- bpe(x, coverage = 0.999, vocab_size = 1000, threads = 1)
+toks      <- bpe_encode(tokeniser, x = x, type = 'subwords')
+toks      <- bpe_encode(tokeniser, x = x, type = 'ids')
+model     <- word2vec(toks, dim = 25, iter = 20, min_count = 3, type = 'skip-gram', lr = 0.05)
+emb       <- as.matrix(model)
+"""
+```
+

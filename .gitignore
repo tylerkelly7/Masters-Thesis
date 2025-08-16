@@ -2,5 +2,5 @@
 .Rhistory
 .RData
 .Ruserdata
-BERT/BERT_old/rad_notes/*
-BERT/BERT_old/rad_notes_test/*
+BERT/*
+Data/*
