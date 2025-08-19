@@ -1,4 +1,4 @@
-# Improving Prediction Accuracy of Sepsis Mortality using Natural Language Processing
+# Improving Prediction Accuracy of Sepsis Mortality using Machine Learning and Natural Language Processing
 
 ## Abstract
 
