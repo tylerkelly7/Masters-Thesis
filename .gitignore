@@ -1,9 +1,48 @@
-.Rproj.user
-.Rhistory
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# R
 .RData
-.Ruserdata
+.Rhistory
+.Rproj.user/*
+
+# Jupyter
+.ipynb_checkpoints
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+
+# Data
+data/raw/*
+data/processed/*
+data/external/*
+data/New/*
+data/Old/*
+!data/.gitkeep
+
+# BERT
 BERT/*
-data/*
-embedding_cache
-results/New/*
-results/Old/*
+!BERT/.gitkeep
+
+# Embeddings
+embedding_cache/*
+!embedding_cache/.gitkeep
+
+# MLflow
+mlflow_tracking/*
+!mlflow_tracking/.gitkeep
+
+
+# Reports
+reports/*.pdf
+reports/figures/*
+!reports/.gitkeep
+
+# Logs
+*.log
+
