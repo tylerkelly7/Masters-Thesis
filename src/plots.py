@@ -35,16 +35,16 @@ def plot_grouped_bars(metric_long, available_metrics, variant: str):
         Path: Directory where figures were saved.
     """
     palette = {
-        'original_baseline_smote': '#2ca02c',
-        'w2v_radiology_baseline_smote': '#d62728',
-        'original_baseline': '#1f77b4',
-        'w2v_radiology_baseline': '#ff7f0e',
+        "original_baseline_smote": "#2ca02c",
+        "w2v_radiology_baseline_smote": "#d62728",
+        "original_baseline": "#1f77b4",
+        "w2v_radiology_baseline": "#ff7f0e",
     }
     hue_order = [
-        'original_baseline_smote',
-        'w2v_radiology_baseline_smote',
-        'original_baseline',
-        'w2v_radiology_baseline',
+        "original_baseline_smote",
+        "w2v_radiology_baseline_smote",
+        "original_baseline",
+        "w2v_radiology_baseline",
     ]
 
     fig_root = _make_figure_dir(variant)
@@ -53,18 +53,21 @@ def plot_grouped_bars(metric_long, available_metrics, variant: str):
         plt.figure(figsize=(12, 6))
         sns.barplot(
             data=metric_long.query("Metric == @metric"),
-            x='Classifier', y='Score', hue='Variant',
-            hue_order=hue_order, palette=palette
+            x="Classifier",
+            y="Score",
+            hue="Variant",
+            hue_order=hue_order,
+            palette=palette,
         )
-        plt.title(f'{metric} Comparison Across Datasets', fontsize=16)
-        plt.xticks(rotation=45, ha='right')
+        plt.title(f"{metric} Comparison Across Datasets", fontsize=16)
+        plt.xticks(rotation=45, ha="right")
         plt.ylabel(metric)
-        plt.xlabel('Classifier')
-        plt.legend(title='Variant', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.xlabel("Classifier")
+        plt.legend(title="Variant", bbox_to_anchor=(1.05, 1), loc="upper left")
         plt.tight_layout()
 
         save_path = fig_root / f"{metric.lower()}_comparison_bar.png"
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.close()
         print(f"📈 Saved → {save_path}")
 
@@ -83,22 +86,22 @@ def plot_violin_distributions(metric_long, available_metrics, variant: str):
         Path: Directory where figures were saved.
     """
     palette = {
-        'original_baseline_smote': '#2ca02c',
-        'w2v_radiology_baseline_smote': '#d62728',
-        'original_baseline': '#1f77b4',
-        'w2v_radiology_baseline': '#ff7f0e',
+        "original_baseline_smote": "#2ca02c",
+        "w2v_radiology_baseline_smote": "#d62728",
+        "original_baseline": "#1f77b4",
+        "w2v_radiology_baseline": "#ff7f0e",
     }
     hue_order = [
-        'original_baseline_smote',
-        'w2v_radiology_baseline_smote',
-        'original_baseline',
-        'w2v_radiology_baseline',
+        "original_baseline_smote",
+        "w2v_radiology_baseline_smote",
+        "original_baseline",
+        "w2v_radiology_baseline",
     ]
     variant_labels = {
-        'original_baseline_smote': 'Original + SMOTE',
-        'w2v_radiology_baseline_smote': 'W2V + SMOTE',
-        'original_baseline': 'Original',
-        'w2v_radiology_baseline': 'W2V',
+        "original_baseline_smote": "Original + SMOTE",
+        "w2v_radiology_baseline_smote": "W2V + SMOTE",
+        "original_baseline": "Original",
+        "w2v_radiology_baseline": "W2V",
     }
 
     fig_root = _make_figure_dir(variant)
@@ -107,18 +110,23 @@ def plot_violin_distributions(metric_long, available_metrics, variant: str):
         plt.figure(figsize=(9, 6))
         ax = sns.violinplot(
             data=metric_long.query("Metric == @metric"),
-            x='Variant', y='Score', hue='Variant',
-            order=hue_order, hue_order=hue_order,
-            palette=palette, inner='quartile', legend=False
+            x="Variant",
+            y="Score",
+            hue="Variant",
+            order=hue_order,
+            hue_order=hue_order,
+            palette=palette,
+            inner="quartile",
+            legend=False,
         )
         ax.set_xticklabels([variant_labels[v] for v in hue_order])
-        plt.title(f'{metric} Score Distribution Across Variants', fontsize=16)
+        plt.title(f"{metric} Score Distribution Across Variants", fontsize=16)
         plt.ylabel(metric)
-        plt.xlabel('')
+        plt.xlabel("")
         plt.tight_layout()
 
         save_path = fig_root / f"{metric.lower()}_comparison_violin.png"
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.close()
         print(f"🎻 Saved → {save_path}")
 

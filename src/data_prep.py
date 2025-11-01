@@ -1,4 +1,3 @@
-
 """
 src/data_prep.py
 
@@ -31,6 +30,7 @@ from src.utils import resolve_path
 # 1. Load Structured Data
 # ==================================================
 
+
 def load_cleaned_data(path: str) -> pd.DataFrame:
     """
     Load the pre-cleaned structured dataset.
@@ -51,7 +51,10 @@ def load_cleaned_data(path: str) -> pd.DataFrame:
 # 2. Load MIMIC Notes
 # ==================================================
 
-def load_mimic_notes(sql_path: str, conn_params: dict, patient_ids: list) -> pd.DataFrame:
+
+def load_mimic_notes(
+    sql_path: str, conn_params: dict, patient_ids: list
+) -> pd.DataFrame:
     """
     Load clinical notes from MIMIC-IV for specific patients.
 
@@ -77,9 +80,11 @@ def load_mimic_notes(sql_path: str, conn_params: dict, patient_ids: list) -> pd.
     # return df
     raise NotImplementedError("Add SQL logic to filter by patient_ids")
 
+
 # ==================================================
 # 3. Clean Notes
 # ==================================================
+
 
 def clean_notes(df: pd.DataFrame, text_col: str = "note_text") -> pd.DataFrame:
     """
@@ -95,11 +100,15 @@ def clean_notes(df: pd.DataFrame, text_col: str = "note_text") -> pd.DataFrame:
     # TODO: paste your text cleaning steps from pymain (lowercasing, punctuation removal, etc.)
     return df
 
+
 # ==================================================
 # 4. Truncate Notes
 # ==================================================
 
-def truncate_notes(df: pd.DataFrame, text_col: str = "note_text", max_length: int = 500) -> pd.DataFrame:
+
+def truncate_notes(
+    df: pd.DataFrame, text_col: str = "note_text", max_length: int = 500
+) -> pd.DataFrame:
     """
     Truncate notes to a fixed length for embedding extraction.
 
@@ -119,10 +128,10 @@ def truncate_notes(df: pd.DataFrame, text_col: str = "note_text", max_length: in
 # 5. Train/Test Split (no resampling)
 # ==================================================
 
-def split_data(X: pd.DataFrame,
-               y: pd.Series,
-               test_size: float = 0.2,
-               random_state: int = 42):
+
+def split_data(
+    X: pd.DataFrame, y: pd.Series, test_size: float = 0.2, random_state: int = 42
+):
     """
     Stratified train/test split for features + target.
 
@@ -135,11 +144,11 @@ def split_data(X: pd.DataFrame,
     Returns:
         tuple: (X_train, X_test, y_train, y_test)
     """
-    return train_test_split(X, y,
-                            test_size=test_size, 
-                            stratify=y,
-                            random_state=random_state
+    return train_test_split(
+        X, y, test_size=test_size, stratify=y, random_state=random_state
     )
+
+
 # ==================================================
 # Part 2
 # ==================================================
@@ -150,6 +159,7 @@ import re
 # ==================================================
 # Step 1: Clean Individual Note Text
 # ==================================================
+
 
 def clean_text(text: str) -> str:
     """
@@ -169,14 +179,18 @@ def clean_text(text: str) -> str:
     """
     if pd.isna(text):
         return ""
-    text = re.sub(r'\s+', ' ', text)  # Normalize whitespace
-    text = re.sub(r'_+', '', text)    # Remove underlines
-    text = re.sub(r'[^\w\s.,:;!?()\-\n]', '', text)  # Remove junk, keep clinical symbols
+    text = re.sub(r"\s+", " ", text)  # Normalize whitespace
+    text = re.sub(r"_+", "", text)  # Remove underlines
+    text = re.sub(
+        r"[^\w\s.,:;!?()\-\n]", "", text
+    )  # Remove junk, keep clinical symbols
     return text.strip()
+
 
 # ==================================================
 # Step 2: Process One Group of Notes
 # ==================================================
+
 
 def process_group(record: dict) -> dict:
     """
@@ -213,11 +227,18 @@ def process_group(record: dict) -> dict:
         "combined_notes": combined_notes,
     }
 
+
 # ==================================================
 # Step 3: Group Notes by Subject and Note Type
 # ==================================================
 
-def group_notes(df: pd.DataFrame, id_col: str = "subject_id", note_type_col: str = "note_type_1", text_col: str = "text") -> list:
+
+def group_notes(
+    df: pd.DataFrame,
+    id_col: str = "subject_id",
+    note_type_col: str = "note_type_1",
+    text_col: str = "text",
+) -> list:
     """
     Group clinical notes by subject and note type, returning records
     suitable for downstream processing.
@@ -239,13 +260,10 @@ def group_notes(df: pd.DataFrame, id_col: str = "subject_id", note_type_col: str
             - note_type_col
             - text (list of notes)
     """
-    grouped_df = (
-        df.groupby([id_col, note_type_col])[text_col]
-        .apply(list)
-        .reset_index()
-    )
+    grouped_df = df.groupby([id_col, note_type_col])[text_col].apply(list).reset_index()
     records = grouped_df.to_dict("records")
     return records
+
 
 from joblib import Parallel, delayed
 import multiprocessing
@@ -253,6 +271,7 @@ import multiprocessing
 # ==================================================
 # Step 4: Parallel Processing of Grouped Notes with Joblib
 # ==================================================
+
 
 def process_notes_in_parallel(records: list, n_jobs: int = None) -> list:
     """
@@ -277,9 +296,11 @@ def process_notes_in_parallel(records: list, n_jobs: int = None) -> list:
     )
     return processed
 
+
 # ==================================================
 # Step 5: Convert Processed Notes to DataFrame and Save
 # ==================================================
+
 
 def save_processed_notes(processed: list, out_path: str) -> pd.DataFrame:
     """
@@ -298,9 +319,11 @@ def save_processed_notes(processed: list, out_path: str) -> pd.DataFrame:
     print(f"✅ Processed notes saved to {out_path}")
     return df
 
+
 # ==================================================
 # Step 6: Pivot Notes to Wide Format and Save
 # ==================================================
+
 
 def pivot_notes_to_wide(nlp_long_df: pd.DataFrame, out_path: str) -> pd.DataFrame:
     """
@@ -318,18 +341,15 @@ def pivot_notes_to_wide(nlp_long_df: pd.DataFrame, out_path: str) -> pd.DataFram
         pd.DataFrame: Wide-format notes DataFrame.
     """
     nlp_wide_df = nlp_long_df.pivot(
-        index="subject_id",
-        columns="note_type_1",
-        values="combined_notes"
+        index="subject_id", columns="note_type_1", values="combined_notes"
     ).reset_index()
 
     nlp_wide_df.columns.name = None  # Remove category label
 
     # Rename columns for clarity
-    nlp_wide_df = nlp_wide_df.rename(columns={
-        "radiology": "Radiology_notes",
-        "discharge": "Discharge_summary_notes"
-    })
+    nlp_wide_df = nlp_wide_df.rename(
+        columns={"radiology": "Radiology_notes", "discharge": "Discharge_summary_notes"}
+    )
 
     # Fill missing note values with empty strings
     nlp_wide_df = nlp_wide_df.fillna("")
@@ -340,9 +360,11 @@ def pivot_notes_to_wide(nlp_long_df: pd.DataFrame, out_path: str) -> pd.DataFram
 
     return nlp_wide_df
 
+
 # ==================================================
 # Step 7: Combine Radiology and Discharge Notes per Subject
 # ==================================================
+
 
 def combine_notes(nlp_wide_df: pd.DataFrame, out_path: str) -> pd.DataFrame:
     """
@@ -361,8 +383,9 @@ def combine_notes(nlp_wide_df: pd.DataFrame, out_path: str) -> pd.DataFrame:
     nlp_combined_df = nlp_wide_df.copy()
 
     nlp_combined_df["combined_notes"] = (
-        nlp_combined_df["Radiology_notes"].str.strip() + " " +
-        nlp_combined_df["Discharge_summary_notes"].str.strip()
+        nlp_combined_df["Radiology_notes"].str.strip()
+        + " "
+        + nlp_combined_df["Discharge_summary_notes"].str.strip()
     ).str.strip()
 
     # Keep only subject_id and combined notes
@@ -374,14 +397,18 @@ def combine_notes(nlp_wide_df: pd.DataFrame, out_path: str) -> pd.DataFrame:
 
     return nlp_combined_notes_df
 
+
 # ==================================================
 # Step 8: Merge Notes with Cleaned Structured Dataset
 # ==================================================
 
-def merge_notes_with_cleaned(df_clean_path: str,
-                             nlp_wide_df: pd.DataFrame,
-                             nlp_combined_notes_df: pd.DataFrame,
-                             out_path: str) -> pd.DataFrame:
+
+def merge_notes_with_cleaned(
+    df_clean_path: str,
+    nlp_wide_df: pd.DataFrame,
+    nlp_combined_notes_df: pd.DataFrame,
+    out_path: str,
+) -> pd.DataFrame:
     """
     Merge radiology/discharge notes (wide) and combined notes into the
     pre-cleaned structured dataset.
@@ -400,17 +427,11 @@ def merge_notes_with_cleaned(df_clean_path: str,
     df_clean = pd.read_csv(df_clean_path)
 
     # Merge with wide-format notes
-    nlp_ready_df = df_clean.merge(
-        nlp_wide_df,
-        on="subject_id",
-        how="left"
-    )
+    nlp_ready_df = df_clean.merge(nlp_wide_df, on="subject_id", how="left")
 
     # Merge with combined notes
     nlp_ready_df = nlp_ready_df.merge(
-        nlp_combined_notes_df,
-        on="subject_id",
-        how="left"
+        nlp_combined_notes_df, on="subject_id", how="left"
     )
 
     # Save merged dataset
@@ -419,13 +440,17 @@ def merge_notes_with_cleaned(df_clean_path: str,
 
     return nlp_ready_df
 
+
 # ==================================================
 # Step 9: Inspect DataFrames
 # ==================================================
 
-def inspect_dataframes(nlp_wide_df: pd.DataFrame,
-                       nlp_combined_notes_df: pd.DataFrame,
-                       nlp_ready_df: pd.DataFrame) -> None:
+
+def inspect_dataframes(
+    nlp_wide_df: pd.DataFrame,
+    nlp_combined_notes_df: pd.DataFrame,
+    nlp_ready_df: pd.DataFrame,
+) -> None:
     """
     Print shapes and info for key NLP DataFrames.
 
@@ -443,12 +468,16 @@ def inspect_dataframes(nlp_wide_df: pd.DataFrame,
     print("\n=== nlp_ready_df Info ===")
     print(nlp_ready_df.info())
 
+
 # ==================================================
 # Step 10: Write Radiology Notes to Word2Vec Text File
 # ==================================================
 
-def write_radiology_notes_for_w2v(nlp_ready_df: pd.DataFrame,
-                                  out_path: str = "data/interim/w2v_interim/w2v_Radiology_notes.txt") -> None:
+
+def write_radiology_notes_for_w2v(
+    nlp_ready_df: pd.DataFrame,
+    out_path: str = "data/interim/w2v_interim/w2v_Radiology_notes.txt",
+) -> None:
     """
     Write radiology notes to a text file, one note per line, for Word2Vec training.
 
@@ -469,8 +498,11 @@ def write_radiology_notes_for_w2v(nlp_ready_df: pd.DataFrame,
 # Step 11: Write Discharge Notes to Word2Vec Text File
 # ==================================================
 
-def write_discharge_notes_for_w2v(nlp_ready_df: pd.DataFrame,
-                                  out_path: str = "data/interim/w2v_interim/w2v_Discharge_notes.txt") -> None:
+
+def write_discharge_notes_for_w2v(
+    nlp_ready_df: pd.DataFrame,
+    out_path: str = "data/interim/w2v_interim/w2v_Discharge_notes.txt",
+) -> None:
     """
     Write discharge summary notes to a text file, one note per line, for Word2Vec training.
 
@@ -486,12 +518,16 @@ def write_discharge_notes_for_w2v(nlp_ready_df: pd.DataFrame,
         for line in nlp_ready_df["Discharge_summary_notes"]:
             f.write(str(line).strip() + "\n")
 
+
 # ==================================================
 # Step 12: Write Combined Notes to Word2Vec Text File
 # ==================================================
 
-def write_combined_notes_for_w2v(nlp_ready_df: pd.DataFrame,
-                                 out_path: str = "data/interim/w2v_interim/w2v_combined_notes.txt") -> None:
+
+def write_combined_notes_for_w2v(
+    nlp_ready_df: pd.DataFrame,
+    out_path: str = "data/interim/w2v_interim/w2v_combined_notes.txt",
+) -> None:
     """
     Write combined notes (radiology + discharge) to a text file, one note per line,
     for Word2Vec training.
@@ -508,9 +544,11 @@ def write_combined_notes_for_w2v(nlp_ready_df: pd.DataFrame,
         for line in nlp_ready_df["combined_notes"]:
             f.write(str(line).strip() + "\n")
 
+
 # =====================================================
 # Load Pre-written Note Corpora for Word2Vec
 # =====================================================
+
 
 def load_note_corpus(note_type: str):
     """
@@ -529,11 +567,13 @@ def load_note_corpus(note_type: str):
     corpus_map = {
         "Radiology": "data/interim/w2v_interim/w2v_Radiology_notes.txt",
         "Discharge": "data/interim/w2v_interim/w2v_Discharge_notes.txt",
-        "Combined":  "data/interim/w2v_interim/w2v_combined_notes.txt",
+        "Combined": "data/interim/w2v_interim/w2v_combined_notes.txt",
     }
 
     if note_type not in corpus_map:
-        raise ValueError(f"Unknown note_type '{note_type}'. Expected one of: {list(corpus_map.keys())}")
+        raise ValueError(
+            f"Unknown note_type '{note_type}'. Expected one of: {list(corpus_map.keys())}"
+        )
 
     corpus_path = resolve_path(corpus_map[note_type])
     if not os.path.exists(corpus_path):

@@ -31,21 +31,23 @@ from src.utils import resolve_path
 # 1. Parameter Grid Definition
 # =====================================================
 
+
 def define_w2v_param_grid():
     """Return parameter grid for coarse-to-moderate hyperparameter search."""
     return {
-        "vector_size": [100, 200],      # moderate sizes; 300 = +40% time, marginal gain
-        "window": [5, 10],              # local (5) vs broader (10) context
-        "min_count": [2, 5],            # include rare tokens vs prune noise
-        "sg": [0, 1],                   # CBOW vs Skip-Gram
-        "negative": [5, 10],            # sampling depth trade-off
-        "epochs": [15, 25]
+        "vector_size": [100, 200],  # moderate sizes; 300 = +40% time, marginal gain
+        "window": [5, 10],  # local (5) vs broader (10) context
+        "min_count": [2, 5],  # include rare tokens vs prune noise
+        "sg": [0, 1],  # CBOW vs Skip-Gram
+        "negative": [5, 10],  # sampling depth trade-off
+        "epochs": [15, 25],
     }
 
 
 # =====================================================
 # 2. Training Utilities
 # =====================================================
+
 
 def train_w2v_variant(sentences, params, tag, note_type):
     """
@@ -75,6 +77,7 @@ def train_w2v_variant(sentences, params, tag, note_type):
 # =====================================================
 # 3. Intrinsic Evaluation (Cosine Similarity)
 # =====================================================
+
 
 def intrinsic_similarity(model, note_type, sample_size=200):
     """
@@ -109,6 +112,7 @@ def intrinsic_similarity(model, note_type, sample_size=200):
 # 4. Grid Search Loop
 # =====================================================
 
+
 def run_w2v_grid_search(sentences, note_type="Radiology", limit=None):
     """
     Iterate over parameter combinations and record intrinsic metrics.
@@ -126,13 +130,18 @@ def run_w2v_grid_search(sentences, note_type="Radiology", limit=None):
 
     # --- NEW LOGGING ---
     import os, time
+
     total_configs = len(param_combos)
     cpu_count = os.cpu_count()
-    print(f"🔧 Preparing to train {total_configs} Word2Vec configurations for {note_type} "
-          f"on {cpu_count} available cores...")
+    print(
+        f"🔧 Preparing to train {total_configs} Word2Vec configurations for {note_type} "
+        f"on {cpu_count} available cores..."
+    )
 
     if limit:
-        print(f"⚠️ Limiting grid search to first {limit} configurations for demonstration.\n")
+        print(
+            f"⚠️ Limiting grid search to first {limit} configurations for demonstration.\n"
+        )
         param_combos = param_combos[:limit]
 
     start_all = time.time()
@@ -141,12 +150,16 @@ def run_w2v_grid_search(sentences, note_type="Radiology", limit=None):
     for i, combo in enumerate(param_combos, start=1):
         params = dict(zip(grid.keys(), combo))
         print(f"[{note_type}] Training config {i}/{len(param_combos)}: {params}")
-        model, runtime, _ = train_w2v_variant(sentences, params, f"{note_type}_cfg{i}", note_type)
+        model, runtime, _ = train_w2v_variant(
+            sentences, params, f"{note_type}_cfg{i}", note_type
+        )
         mean_sim = intrinsic_similarity(model, note_type)
         records.append({**params, "runtime_s": runtime, "mean_cosine_sim": mean_sim})
 
     elapsed = round(time.time() - start_all, 2)
-    print(f"✅ Completed {len(param_combos)} configs for {note_type} in {elapsed/60:.2f} minutes.\n")
+    print(
+        f"✅ Completed {len(param_combos)} configs for {note_type} in {elapsed/60:.2f} minutes.\n"
+    )
 
     df_results = pd.DataFrame(records)
     save_dir = resolve_path(f"results/embeddings/{note_type}")
@@ -160,6 +173,7 @@ def run_w2v_grid_search(sentences, note_type="Radiology", limit=None):
 # =====================================================
 # 5. Select Best Configuration and Retrain
 # =====================================================
+
 
 def select_and_save_best(sentences, results_df, note_type):
     """
@@ -179,8 +193,12 @@ def select_and_save_best(sentences, results_df, note_type):
     # keep only legitimate Word2Vec parameters
     valid_keys = ["vector_size", "window", "min_count", "sg", "negative", "epochs"]
     best_params = {
-        k: v for k, v in results_df.sort_values("mean_cosine_sim", ascending=False)
-                                .iloc[0].to_dict().items() if k in valid_keys
+        k: v
+        for k, v in results_df.sort_values("mean_cosine_sim", ascending=False)
+        .iloc[0]
+        .to_dict()
+        .items()
+        if k in valid_keys
     }
 
     # Cast all numeric parameters to int
@@ -198,7 +216,9 @@ def select_and_save_best(sentences, results_df, note_type):
     start_time = time.time()
 
     # Retrain with best parameters
-    model, runtime, _ = train_w2v_variant(sentences, best_params, f"best_{note_type}", note_type)
+    model, runtime, _ = train_w2v_variant(
+        sentences, best_params, f"best_{note_type}", note_type
+    )
 
     elapsed = round((time.time() - start_time) / 60, 2)
     print(f"✅ Finished retraining {note_type} model in {elapsed} minutes.")
@@ -219,12 +239,10 @@ def select_and_save_best(sentences, results_df, note_type):
     return model, best_params
 
 
-
-
-
 # =====================================================
 # 6. Visualization Utility
 # =====================================================
+
 
 def plot_intrinsic_results(df_results, note_type):
     """Plot mean cosine similarity for each configuration."""
@@ -246,6 +264,7 @@ def plot_intrinsic_results(df_results, note_type):
 # 7. Full Orchestrator
 # =====================================================
 
+
 def optimize_word2vec(sentences, note_type, limit=None, visualize=True):
     """
     Full tuning pipeline:
@@ -266,5 +285,7 @@ def optimize_word2vec(sentences, note_type, limit=None, visualize=True):
         plot_intrinsic_results(df_results, note_type)
     model, best_params = select_and_save_best(sentences, df_results, note_type)
     print(f"✅ [{note_type}] Best model saved to embedding_cache/w2v/tuned/{note_type}/")
-    print(f"   Params: vector_size={best_params['vector_size']}, window={best_params['window']}, sg={best_params['sg']}")
+    print(
+        f"   Params: vector_size={best_params['vector_size']}, window={best_params['window']}, sg={best_params['sg']}"
+    )
     return model, best_params

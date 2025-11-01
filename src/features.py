@@ -23,6 +23,7 @@ from src.utils import resolve_path
 # 1. Structured Feature Scaling (Train/Test)
 # ==================================================
 
+
 def scale_features(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
@@ -31,7 +32,7 @@ def scale_features(
     prefix: str = "original",
     id_col: str = "subject_id",
     target_col: str = "hospital_expire_flag",
-    save_dir: str = "data/processed"
+    save_dir: str = "data/processed",
 ):
     """
     Fit a StandardScaler on the training set, transform both train and test sets,
@@ -70,11 +71,8 @@ def scale_features(
 # 2. Word2Vec Utilities
 # ==================================================
 
-def train_word2vec(corpus_path: str,
-                   model_out: str,
-                   baseline: bool = False,
-                   **params):
 
+def train_word2vec(corpus_path: str, model_out: str, baseline: bool = False, **params):
     """
     Train a Word2Vec model from a corpus of notes.
 
@@ -104,19 +102,17 @@ def train_word2vec(corpus_path: str,
     with open(corpus_path, "r", encoding="utf-8") as f:
         documents = [line.strip().split() for line in f if line.strip()]
 
-    model = Word2Vec(
-        sentences=documents,
-        **params
-    )
+    model = Word2Vec(sentences=documents, **params)
 
     # Ensure output directory exists
     os.makedirs(os.path.dirname(model_out), exist_ok=True)
-    
+
     model.save(str(model_out))
     status = "baseline" if baseline else "custom"
     print(f"✅ Word2Vec model ({status}) trained and saved to {model_out}")
 
     return model
+
 
 def get_w2v_params(note_type: str = "radiology") -> dict:
     """
@@ -133,10 +129,10 @@ def get_w2v_params(note_type: str = "radiology") -> dict:
     base_params = {
         "vector_size": 100,
         "window": 5,
-        "sg": 0,          # 0 = CBOW, 1 = Skip-gram
+        "sg": 0,  # 0 = CBOW, 1 = Skip-gram
         "epochs": 10,
-        "min_count": 2,   # ignore rare words
-        "workers": 4      # parallelism
+        "min_count": 2,  # ignore rare words
+        "workers": 4,  # parallelism
     }
 
     # Example customization (future expansion)
@@ -146,6 +142,7 @@ def get_w2v_params(note_type: str = "radiology") -> dict:
         base_params["epochs"] = 15
 
     return base_params
+
 
 def load_word2vec(model_path: str, baseline: bool | None = None) -> Word2Vec:
     """Load a saved Word2Vec model."""
@@ -165,7 +162,9 @@ def load_word2vec(model_path: str, baseline: bool | None = None) -> Word2Vec:
         candidate_path = model_path
     # If not specified, auto-detect whichever exists
     else:
-        candidate_path = baseline_path if os.path.exists(resolve_path(baseline_path)) else model_path
+        candidate_path = (
+            baseline_path if os.path.exists(resolve_path(baseline_path)) else model_path
+        )
 
     # Load model
     candidate_path = resolve_path(candidate_path)
@@ -195,7 +194,7 @@ def scale_w2v_embeddings(
     X_test: pd.DataFrame,
     prefix: str = "w2v",
     id_col: str = "subject_id",
-    save_dir: str = "embedding_cache/w2v/baseline"
+    save_dir: str = "embedding_cache/w2v/baseline",
 ):
     """
     Fit a StandardScaler on training W2V embeddings and apply to both train/test.
@@ -212,11 +211,13 @@ def scale_w2v_embeddings(
     os.makedirs(os.path.join(save_dir, prefix), exist_ok=True)
 
     w2v_cols = [
-    col for col in X_train.columns
-    if col.startswith("w2v_") or col.startswith("rad_w2v_") or 
-       col.startswith("w2v_dis_") or col.startswith("w2v_comb_")
-]
-
+        col
+        for col in X_train.columns
+        if col.startswith("w2v_")
+        or col.startswith("rad_w2v_")
+        or col.startswith("w2v_dis_")
+        or col.startswith("w2v_comb_")
+    ]
 
     scaler = StandardScaler()
     X_train_scaled = X_train.copy()
@@ -229,10 +230,16 @@ def scale_w2v_embeddings(
     embed_dir = resolve_path(os.path.join(save_dir, prefix))
     os.makedirs(embed_dir, exist_ok=True)
 
-    X_train_scaled.to_csv(os.path.join(embed_dir, f"scaled_{prefix}_embeddings_train.csv"), index=False)
-    X_test_scaled.to_csv(os.path.join(embed_dir, f"scaled_{prefix}_embeddings_test.csv"), index=False)
+    X_train_scaled.to_csv(
+        os.path.join(embed_dir, f"scaled_{prefix}_embeddings_train.csv"), index=False
+    )
+    X_test_scaled.to_csv(
+        os.path.join(embed_dir, f"scaled_{prefix}_embeddings_test.csv"), index=False
+    )
 
-    print(f"✅ Scaled {prefix} embeddings saved to {embed_dir} (embeddings only, not merged)")
+    print(
+        f"✅ Scaled {prefix} embeddings saved to {embed_dir} (embeddings only, not merged)"
+    )
 
     return X_train_scaled, X_test_scaled
 
@@ -261,10 +268,9 @@ def get_subject_embedding(doc: str, model: Word2Vec) -> np.ndarray:
     return np.mean(vectors, axis=0)
 
 
-def apply_embeddings_to_subjects(df: pd.DataFrame,
-                                 text_col: str,
-                                 model: Word2Vec,
-                                 prefix: str = "w2v_rad_") -> pd.DataFrame:
+def apply_embeddings_to_subjects(
+    df: pd.DataFrame, text_col: str, model: Word2Vec, prefix: str = "w2v_rad_"
+) -> pd.DataFrame:
     """
     Generate averaged embeddings for each subject's notes and return a DataFrame.
 
@@ -277,13 +283,12 @@ def apply_embeddings_to_subjects(df: pd.DataFrame,
     Returns:
         pd.DataFrame: DataFrame with subject_id + embedding columns.
     """
-    embeddings = np.vstack([
-        get_subject_embedding(str(doc), model) for doc in df[text_col]
-    ])
+    embeddings = np.vstack(
+        [get_subject_embedding(str(doc), model) for doc in df[text_col]]
+    )
 
     embed_df = pd.DataFrame(
-        embeddings,
-        columns=[f"{prefix}{i+1}" for i in range(model.vector_size)]
+        embeddings, columns=[f"{prefix}{i+1}" for i in range(model.vector_size)]
     )
     embed_df["subject_id"] = df["subject_id"].values
 
@@ -297,7 +302,7 @@ def merge_embeddings_with_features(
     X_test_embed: pd.DataFrame,
     id_col: str = "subject_id",
     prefix: str = "w2v",
-    save_dir: str = "data/processed"
+    save_dir: str = "data/processed",
 ):
     """
     Merge structured features and embeddings for both train and test sets.
@@ -314,7 +319,6 @@ def merge_embeddings_with_features(
     """
     out_dir = resolve_path(os.path.join(save_dir, prefix))
     os.makedirs(out_dir, exist_ok=True)
-
 
     X_train_merged = X_train_features.merge(X_train_embed, on=id_col, how="left")
     X_test_merged = X_test_features.merge(X_test_embed, on=id_col, how="left")
@@ -334,7 +338,10 @@ def merge_embeddings_with_features(
 # 3. BERT Embedding Preparation (no modeling)
 # ==================================================
 
-def get_bert_embeddings(texts, model_name="emilyalsentzer/Bio_ClinicalBERT", batch_size=16, device=None):
+
+def get_bert_embeddings(
+    texts, model_name="emilyalsentzer/Bio_ClinicalBERT", batch_size=16, device=None
+):
     """
     Generate BERT embeddings for a list of texts (prep only).
 
@@ -356,8 +363,10 @@ def get_bert_embeddings(texts, model_name="emilyalsentzer/Bio_ClinicalBERT", bat
 
     embeddings = []
     for i in range(0, len(texts), batch_size):
-        batch = texts[i:i+batch_size]
-        encodings = tokenizer(batch, padding=True, truncation=True, return_tensors="pt").to(device)
+        batch = texts[i : i + batch_size]
+        encodings = tokenizer(
+            batch, padding=True, truncation=True, return_tensors="pt"
+        ).to(device)
         with torch.no_grad():
             outputs = model(**encodings)
             cls_embeddings = outputs.last_hidden_state[:, 0, :]  # [CLS] token
@@ -365,7 +374,9 @@ def get_bert_embeddings(texts, model_name="emilyalsentzer/Bio_ClinicalBERT", bat
     return torch.cat(embeddings, dim=0)
 
 
-def bert_to_dataframe(embeddings: torch.Tensor, ids: list, prefix: str = "bert_") -> pd.DataFrame:
+def bert_to_dataframe(
+    embeddings: torch.Tensor, ids: list, prefix: str = "bert_"
+) -> pd.DataFrame:
     """
     Convert BERT embeddings into a DataFrame with subject IDs.
 
@@ -391,7 +402,13 @@ def bert_to_dataframe(embeddings: torch.Tensor, ids: list, prefix: str = "bert_"
 
 from sklearn.decomposition import PCA
 
-def reduce_dimensions(df: pd.DataFrame, embedding_prefix: str, n_components: int = 50, id_col: str = "subject_id") -> pd.DataFrame:
+
+def reduce_dimensions(
+    df: pd.DataFrame,
+    embedding_prefix: str,
+    n_components: int = 50,
+    id_col: str = "subject_id",
+) -> pd.DataFrame:
     """
     Reduce dimensionality of embedding columns using PCA.
 
@@ -407,18 +424,20 @@ def reduce_dimensions(df: pd.DataFrame, embedding_prefix: str, n_components: int
     pca = PCA(n_components=n_components)
     reduced = pca.fit_transform(df[embed_cols])
 
-    reduced_df = pd.DataFrame(reduced, columns=[f"{embedding_prefix}pc{i+1}" for i in range(n_components)])
+    reduced_df = pd.DataFrame(
+        reduced, columns=[f"{embedding_prefix}pc{i+1}" for i in range(n_components)]
+    )
     reduced_df[id_col] = df[id_col].values
     return reduced_df
+
 
 # ==================================================
 # 5. Save/Load Feature-Engineered Datasets
 # ==================================================
 
+
 def save_feature_dataset(
-    df: pd.DataFrame,
-    filename: str,
-    base_dir: str = "data/processed"
+    df: pd.DataFrame, filename: str, base_dir: str = "data/processed"
 ) -> str:
     """
     Save a feature-engineered dataset (train/test or merged).
@@ -444,10 +463,9 @@ def save_feature_dataset(
     return out_path
 
 
-
-
-def load_feature_dataset(filename: str,
-                         base_dir: str = "data/processed") -> pd.DataFrame:
+def load_feature_dataset(
+    filename: str, base_dir: str = "data/processed"
+) -> pd.DataFrame:
     """
     Load a previously saved feature-engineered dataset.
 
@@ -464,9 +482,12 @@ def load_feature_dataset(filename: str,
     print(f"✅ Loaded feature dataset from {path} (shape: {df.shape})")
     return df
 
-def save_w2v_embeddings(embed_df: pd.DataFrame,
-                        filename: str,
-                        base_dir: str = "data/processed/embeddings/w2v") -> str:
+
+def save_w2v_embeddings(
+    embed_df: pd.DataFrame,
+    filename: str,
+    base_dir: str = "data/processed/embeddings/w2v",
+) -> str:
     """
     Save subject-level Word2Vec embeddings to CSV.
 
@@ -484,9 +505,12 @@ def save_w2v_embeddings(embed_df: pd.DataFrame,
     print(f"✅ Word2Vec embeddings saved to {out_path}")
     return out_path
 
-def save_bert_embeddings(embed_df: pd.DataFrame,
-                         filename: str,
-                         base_dir: str = "data/processed/embeddings/bert") -> str:
+
+def save_bert_embeddings(
+    embed_df: pd.DataFrame,
+    filename: str,
+    base_dir: str = "data/processed/embeddings/bert",
+) -> str:
     """
     Save BERT embeddings DataFrame to CSV.
 
@@ -504,9 +528,12 @@ def save_bert_embeddings(embed_df: pd.DataFrame,
     print(f"✅ BERT embeddings saved to {out_path}")
     return out_path
 
-def save_reduced_embeddings(embed_df: pd.DataFrame,
-                            filename: str,
-                            base_dir: str = "data/processed/embeddings/pca") -> str:
+
+def save_reduced_embeddings(
+    embed_df: pd.DataFrame,
+    filename: str,
+    base_dir: str = "data/processed/embeddings/pca",
+) -> str:
     """
     Save PCA-reduced embeddings DataFrame to CSV.
 
@@ -524,6 +551,7 @@ def save_reduced_embeddings(embed_df: pd.DataFrame,
     print(f"✅ Reduced embeddings saved to {out_path}")
     return out_path
 
+
 # ==================================================
 # 6. Dataset Validation Utility
 # ==================================================
@@ -532,8 +560,11 @@ import pandas as pd
 import os
 from src.utils import resolve_path
 
-def validate_saved_datasets(prefixes=("original", "w2v_radiology", "w2v_discharge", "w2v_combined"),
-                            check_alignment=False):
+
+def validate_saved_datasets(
+    prefixes=("original", "w2v_radiology", "w2v_discharge", "w2v_combined"),
+    check_alignment=False,
+):
     """
     Validate that all expected processed datasets exist and match expected shapes.
 
@@ -552,9 +583,9 @@ def validate_saved_datasets(prefixes=("original", "w2v_radiology", "w2v_discharg
 
         expected_files = {
             "X_train": f"data_{prefix}_xtrain.csv",
-            "X_test":  f"data_{prefix}_xtest.csv",
+            "X_test": f"data_{prefix}_xtest.csv",
             "y_train": f"data_{prefix}_ytrain.csv",
-            "y_test":  f"data_{prefix}_ytest.csv",
+            "y_test": f"data_{prefix}_ytest.csv",
         }
 
         for split, fname in expected_files.items():
@@ -573,14 +604,20 @@ def validate_saved_datasets(prefixes=("original", "w2v_radiology", "w2v_discharg
 
                 # Optional subject_id alignment check
                 if check_alignment and split.startswith("X_"):
-                    yfile = expected_files["y_train"] if "train" in split else expected_files["y_test"]
+                    yfile = (
+                        expected_files["y_train"]
+                        if "train" in split
+                        else expected_files["y_test"]
+                    )
                     ypath = os.path.join(base_dir, yfile)
                     if os.path.exists(ypath):
                         y_df = pd.read_csv(ypath)
 
                         # Only check alignment if both DataFrames contain subject_id
                         if "subject_id" in df.columns and "subject_id" in y_df.columns:
-                            common_ids = set(df["subject_id"]).intersection(set(y_df["subject_id"]))
+                            common_ids = set(df["subject_id"]).intersection(
+                                set(y_df["subject_id"])
+                            )
                             aligned = len(common_ids) == len(df)
                             row["Aligned"] = aligned
                         else:
@@ -588,22 +625,20 @@ def validate_saved_datasets(prefixes=("original", "w2v_radiology", "w2v_discharg
                     else:
                         row["Aligned"] = None
 
-
                 summary_rows.append(row)
             else:
-                summary_rows.append({
-                    "Variant": prefix,
-                    "Split": split,
-                    "File": fname,
-                    "Exists": False,
-                    "Rows": None,
-                    "Columns": None,
-                })
+                summary_rows.append(
+                    {
+                        "Variant": prefix,
+                        "Split": split,
+                        "File": fname,
+                        "Exists": False,
+                        "Rows": None,
+                        "Columns": None,
+                    }
+                )
 
     return pd.DataFrame(summary_rows)
-
-
-
 
 
 ###
@@ -616,10 +651,13 @@ import itertools
 import random
 from datetime import datetime
 
-def random_search_word2vec(corpus_path: str,
-                           param_grid: dict,
-                           n_iter: int = 10,
-                           out_dir: str = "results/word2vec_random"):
+
+def random_search_word2vec(
+    corpus_path: str,
+    param_grid: dict,
+    n_iter: int = 10,
+    out_dir: str = "results/word2vec_random",
+):
     """
     Perform random search over Word2Vec hyperparameters.
     Trains models, saves them, and returns the paths.
@@ -663,14 +701,16 @@ def random_search_word2vec(corpus_path: str,
             window=config["window"],
             min_count=config["min_count"],
             sg=config["sg"],
-            epochs=config["epochs"]
+            epochs=config["epochs"],
         )
 
         # Save with descriptive filename
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        model_name = (f"w2v_sg{config['sg']}_dim{config['vector_size']}_"
-                      f"win{config['window']}_min{config['min_count']}_"
-                      f"neg{config['negative']}_iter{config['epochs']}_{stamp}.model")
+        model_name = (
+            f"w2v_sg{config['sg']}_dim{config['vector_size']}_"
+            f"win{config['window']}_min{config['min_count']}_"
+            f"neg{config['negative']}_iter{config['epochs']}_{stamp}.model"
+        )
         model_path = os.path.join(out_dir, model_name)
 
         model.save(model_path)

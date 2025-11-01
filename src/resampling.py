@@ -11,6 +11,7 @@ import pandas as pd
 import os
 from src.utils import resolve_path
 
+
 # --------------------------------------------------
 # 1. Resampling
 # --------------------------------------------------
@@ -58,8 +59,9 @@ def print_class_balance(y, title="Dataset"):
 # --------------------------------------------------
 # 3. Save imbalanced datasets
 # --------------------------------------------------
-def save_resampled_dataset(X_train, y_train, filename: str,
-                           base_dir: str = "data/processed/smote_datasets") -> str:
+def save_resampled_dataset(
+    X_train, y_train, filename: str, base_dir: str = "data/processed/smote_datasets"
+) -> str:
     out_dir = resolve_path(base_dir)
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, filename)

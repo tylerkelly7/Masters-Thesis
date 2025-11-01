@@ -9,6 +9,7 @@ from sklearn.metrics import roc_auc_score
 
 ArrayLike = Union[np.ndarray, Sequence[float], pd.Series, List[float]]
 
+
 # -----------------------------
 # Utilities
 # -----------------------------
@@ -20,13 +21,16 @@ def _to_numpy(x: ArrayLike) -> np.ndarray:
         raise ValueError("Input must be 1-D.")
     return x
 
+
 def _check_binary_labels(y: np.ndarray):
     vals = np.unique(y)
     if not set(vals).issubset({0, 1}):
         raise ValueError("y_true must be binary with values {0,1}.")
 
+
 import numpy as np
 from scipy.stats import norm
+
 
 # ------------------------------------------------------------
 # Midrank helper (unchanged)
@@ -125,7 +129,8 @@ def bootstrap_auc_ci(
     Percentile bootstrap CI for AUROC on a single model.
     Returns dict with: auc, mean_boot, se, ci_low, ci_high.
     """
-    y_true = _to_numpy(y_true); y_pred = _to_numpy(y_pred)
+    y_true = _to_numpy(y_true)
+    y_pred = _to_numpy(y_pred)
     _check_binary_labels(y_true)
 
     rng = np.random.RandomState(random_state)
@@ -134,7 +139,8 @@ def bootstrap_auc_ci(
     if stratified:
         pos_idx = np.where(y_true == 1)[0]
         neg_idx = np.where(y_true == 0)[0]
-        n_pos = len(pos_idx); n_neg = len(neg_idx)
+        n_pos = len(pos_idx)
+        n_neg = len(neg_idx)
         if n_pos == 0 or n_neg == 0:
             raise ValueError("Both classes needed for AUROC.")
         for _ in range(n_boot):
@@ -155,10 +161,13 @@ def bootstrap_auc_ci(
     hi = float(np.quantile(aucs, 1 - (1 - alpha) / 2))
     return dict(auc=base_auc, mean_boot=mean_boot, se=se, ci_low=lo, ci_high=hi)
 
+
 # -----------------------------
 # Holm–Bonferroni FWER control
 # -----------------------------
-def holm_bonferroni(p_values: Sequence[float], alpha: float = 0.05) -> Dict[str, Union[List[float], List[bool]]]:
+def holm_bonferroni(
+    p_values: Sequence[float], alpha: float = 0.05
+) -> Dict[str, Union[List[float], List[bool]]]:
     """
     Holm–Bonferroni step-down procedure. Returns adjusted p-values and rejections.
     """
@@ -183,6 +192,7 @@ def holm_bonferroni(p_values: Sequence[float], alpha: float = 0.05) -> Dict[str,
             break
     return {"p_adjusted": adj.tolist(), "reject": rejections.tolist()}
 
+
 # -----------------------------
 # Batch comparison helper
 # -----------------------------
@@ -203,7 +213,8 @@ def compare_aurocs(
     y = _to_numpy(y_true)
     rows = []
     for a, b in pairs:
-        pa = _to_numpy(model_probs[a]); pb = _to_numpy(model_probs[b])
+        pa = _to_numpy(model_probs[a])
+        pb = _to_numpy(model_probs[b])
         if len(pa) != len(y) or len(pb) != len(y):
             raise ValueError(f"Probability length mismatch for pair ({a}, {b}).")
         auc_a = roc_auc_score(y, pa)
@@ -212,28 +223,55 @@ def compare_aurocs(
 
         if method.lower() == "delong":
             res = delong_roc_test(y, pa, pb)
-            rows.append({
-                "model_a": a, "model_b": b,
-                "auc_a": auc_a, "auc_b": auc_b, "delta": delta,
-                "se_delta": res["se"], "z": res["z"], "p_value": res["p"],
-                "ci_low": np.nan, "ci_high": np.nan, "method": "delong"
-            })
+            rows.append(
+                {
+                    "model_a": a,
+                    "model_b": b,
+                    "auc_a": auc_a,
+                    "auc_b": auc_b,
+                    "delta": delta,
+                    "se_delta": res["se"],
+                    "z": res["z"],
+                    "p_value": res["p"],
+                    "ci_low": np.nan,
+                    "ci_high": np.nan,
+                    "method": "delong",
+                }
+            )
         elif method.lower() == "bootstrap":
             # Per-model CIs; no paired p-value here
             ca = bootstrap_auc_ci(y, pa, n_boot=n_boot, alpha=alpha)
             cb = bootstrap_auc_ci(y, pb, n_boot=n_boot, alpha=alpha)
-            rows.append({
-                "model_a": a, "model_b": b,
-                "auc_a": auc_a, "auc_b": auc_b, "delta": delta,
-                "se_delta": np.nan, "z": np.nan, "p_value": np.nan,
-                "ci_low": ca["ci_low"], "ci_high": ca["ci_high"], "method": "bootstrap_a"
-            })
-            rows.append({
-                "model_a": b, "model_b": a,
-                "auc_a": auc_b, "auc_b": auc_a, "delta": -delta,
-                "se_delta": np.nan, "z": np.nan, "p_value": np.nan,
-                "ci_low": cb["ci_low"], "ci_high": cb["ci_high"], "method": "bootstrap_b"
-            })
+            rows.append(
+                {
+                    "model_a": a,
+                    "model_b": b,
+                    "auc_a": auc_a,
+                    "auc_b": auc_b,
+                    "delta": delta,
+                    "se_delta": np.nan,
+                    "z": np.nan,
+                    "p_value": np.nan,
+                    "ci_low": ca["ci_low"],
+                    "ci_high": ca["ci_high"],
+                    "method": "bootstrap_a",
+                }
+            )
+            rows.append(
+                {
+                    "model_a": b,
+                    "model_b": a,
+                    "auc_a": auc_b,
+                    "auc_b": auc_a,
+                    "delta": -delta,
+                    "se_delta": np.nan,
+                    "z": np.nan,
+                    "p_value": np.nan,
+                    "ci_low": cb["ci_low"],
+                    "ci_high": cb["ci_high"],
+                    "method": "bootstrap_b",
+                }
+            )
         else:
             raise ValueError("method must be 'delong' or 'bootstrap'.")
 

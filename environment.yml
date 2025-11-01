@@ -60,7 +60,7 @@ dependencies:
       # pyspark
 
       # Time Series
-      # statsmodels
+      - statsmodels
       # pmdarima
       # prophet
       # gluonts

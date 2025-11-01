@@ -17,7 +17,7 @@ venv/
 # ======================
 # Jupyter
 # ======================
-.ipynb_checkpoints
+**/.ipynb_checkpoints/
 
 # ======================
 # R / RStudio
@@ -36,6 +36,9 @@ notebooks/archive/rproj_bins/*
 data/raw/*
 !data/raw/.gitkeep
 
+data/interim/*
+!data/interim/.gitkeep
+
 data/processed/*
 !data/processed/.gitkeep
 
@@ -48,6 +51,10 @@ data/old/*
 data/new/*
 !data/new/.gitkeep
 
+# Exclude all data by default; keep placeholders
+data/**
+!data/**/.gitkeep
+
 # ======================
 # Results (large artifacts)
 # Keep structure w/ .gitkeep
@@ -58,6 +65,33 @@ results/plots/*
 !results/plots/.gitkeep
 results/Old/Models/*
 results/New/Models/*
+## Heavy figures and binaries in results
+results/**/*.png
+results/**/*.jpg
+results/**/*.jpeg
+results/**/*.svg
+results/**/*.webp
+results/**/*.npy
+results/**/*.npz
+results/**/*.joblib
+results/**/*.pkl
+results/**/*.pt
+results/**/*.pth
+results/**/*.bin
+results/**/*.model
+## Prediction probability dumps
+results/**/predictions/**
+!results/**/predictions/.gitkeep
+## Embedding artifacts (keep CSV summaries)
+results/embeddings/**/*.npy
+results/embeddings/**/*.npz
+results/embeddings/**/*.json
+results/embeddings/**/*.bin
+!results/embeddings/.gitkeep
+
+# Exclude all results by default; keep placeholders
+results/**
+!results/**/.gitkeep
 
 # ======================
 # BERT & Embeddings
@@ -83,6 +117,10 @@ reports/*.pdf
 reports/figures/*
 !reports/figures/.gitkeep
 
+# Exclude all reports by default; keep placeholders
+reports/**
+!reports/**/.gitkeep
+
 # ======================
 # App (static assets)
 # Keep structure w/ .gitkeep
@@ -91,9 +129,59 @@ app/static/*
 !app/static/.gitkeep
 
 # ======================
+# Build artifacts
+# ======================
+build/
+dist/
+*.egg
+.eggs/
+**/*.egg-info/
+pip-wheel-metadata/
+
+# ======================
+# Test / Coverage / Type-check
+# ======================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# ======================
+# IDE / Project
+# ======================
+.idea/
+.vscode/
+.history/
+
+# ======================
+# Notebook training logs
+# ======================
+catboost_info/**
+**/*.tfevents*
+
+# ======================
+# OS cruft
+# ======================
+desktop.ini
+ehthumbs.db
+Icon?
+._*
+~$*
+
+# ======================
 # OS / Editor
 # ======================
 .DS_Store
 Thumbs.db
 *.swp
 
+# ======================
+# Notes
+# ======================
+notes/*
+docs/**/*.pdf
+!docs/.gitkeep

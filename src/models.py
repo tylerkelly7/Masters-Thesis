@@ -36,8 +36,11 @@ from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import (
-    RepeatedStratifiedKFold, GridSearchCV, RandomizedSearchCV,
-    StratifiedKFold, cross_val_score
+    RepeatedStratifiedKFold,
+    GridSearchCV,
+    RandomizedSearchCV,
+    StratifiedKFold,
+    cross_val_score,
 )
 from sklearn.metrics import roc_auc_score, classification_report, make_scorer
 from sklearn.pipeline import Pipeline
@@ -60,24 +63,41 @@ from src.utils import resolve_path
 # 1. Classifier Registry
 # ==================================================
 
+
 def get_classifiers(random_state=42):
     return {
-        "LogisticRegression": LogisticRegression(max_iter=2000, random_state=random_state),
+        "LogisticRegression": LogisticRegression(
+            max_iter=2000, random_state=random_state
+        ),
         "DecisionTree": DecisionTreeClassifier(random_state=random_state),
         "RandomForest": RandomForestClassifier(random_state=random_state),
         "GradientBoosting": GradientBoostingClassifier(random_state=random_state),
-        "XGB": XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=random_state),
+        "XGB": XGBClassifier(
+            use_label_encoder=False, eval_metric="logloss", random_state=random_state
+        ),
         "LGBM": LGBMClassifier(random_state=random_state, verbose=-1),
-        "CatBoost": CatBoostClassifier(task_type="CPU", verbose=0, random_state=random_state, allow_writing_files=False),
-        "SVC": SVC(probability=False, shrinking=True, max_iter=-1, cache_size=2000, random_state=random_state),
+        "CatBoost": CatBoostClassifier(
+            task_type="CPU",
+            verbose=0,
+            random_state=random_state,
+            allow_writing_files=False,
+        ),
+        "SVC": SVC(
+            probability=False,
+            shrinking=True,
+            max_iter=-1,
+            cache_size=2000,
+            random_state=random_state,
+        ),
         "MLP": MLPClassifier(max_iter=2000, random_state=random_state),
-        "NaiveBayes": GaussianNB()
+        "NaiveBayes": GaussianNB(),
     }
 
 
 # ==================================================
 # 2. Param Distributions
 # ==================================================
+
 
 def get_param_distributions():
     from scipy.stats import randint, uniform
@@ -89,7 +109,7 @@ def get_param_distributions():
             "clf__max_features": ["sqrt", "log2", None],
             "clf__min_samples_split": randint(2, 11),
             "clf__min_samples_leaf": randint(1, 5),
-            "clf__bootstrap": [True, False]
+            "clf__bootstrap": [True, False],
         },
         "GradientBoosting": {
             "clf__n_estimators": randint(100, 501),
@@ -98,7 +118,7 @@ def get_param_distributions():
             "clf__min_samples_split": randint(2, 11),
             "clf__min_samples_leaf": randint(1, 5),
             "clf__subsample": uniform(0.7, 0.3),
-            "clf__max_features": ["sqrt", "log2", None]
+            "clf__max_features": ["sqrt", "log2", None],
         },
         "XGB": {
             "clf__n_estimators": randint(200, 1001),
@@ -107,7 +127,7 @@ def get_param_distributions():
             "clf__subsample": uniform(0.7, 0.3),
             "clf__colsample_bytree": uniform(0.7, 0.3),
             "clf__gamma": uniform(0, 0.5),
-            "clf__min_child_weight": randint(1, 7)
+            "clf__min_child_weight": randint(1, 7),
         },
         "LGBM": {
             "clf__n_estimators": randint(200, 1001),
@@ -116,52 +136,52 @@ def get_param_distributions():
             "clf__num_leaves": randint(31, 256),
             "clf__subsample": uniform(0.7, 0.3),
             "clf__colsample_bytree": uniform(0.7, 0.3),
-            "clf__min_child_samples": randint(10, 101)
+            "clf__min_child_samples": randint(10, 101),
         },
         "SVC": {
             "clf__C": [0.01, 0.1, 1, 10],
             "clf__kernel": ["linear"],
             "clf__gamma": ["scale", "auto"],
-            "clf__shrinking": [True, False]
+            "clf__shrinking": [True, False],
         },
         "MLP": {
-            "clf__hidden_layer_sizes": [(64,), (64,32)],
+            "clf__hidden_layer_sizes": [(64,), (64, 32)],
             "clf__activation": ["relu"],
-            "clf__solver": ["adam"],                  # drop 'sgd' for stability
+            "clf__solver": ["adam"],  # drop 'sgd' for stability
             "clf__alpha": [1e-4, 1e-3],
             "clf__learning_rate_init": [1e-3],
             "clf__early_stopping": [True],
-            "clf__n_iter_no_change": [10]
+            "clf__n_iter_no_change": [10],
         },
         "DecisionTree": {
             "clf__max_depth": [None, 5, 10, 20, 50],
             "clf__min_samples_split": [2, 5, 10, 20],
             "clf__min_samples_leaf": [1, 2, 4, 10],
-            "clf__criterion": ["gini", "entropy", "log_loss"]
+            "clf__criterion": ["gini", "entropy", "log_loss"],
         },
-       "LogisticRegression": [
+        "LogisticRegression": [
             # Case 1: lbfgs (only supports l2)
             {
                 "clf__penalty": ["l2"],
                 "clf__solver": ["lbfgs", "newton-cg", "sag"],
                 "clf__C": [0.01, 0.1, 1, 10],
-                "clf__max_iter": [1000]
+                "clf__max_iter": [1000],
             },
             # Case 2: saga with l1 or elasticnet
             {
                 "clf__penalty": ["l1", "elasticnet"],
                 "clf__solver": ["saga"],
                 "clf__C": [0.01, 0.1, 1, 10],
-                "clf__l1_ratio": [0, 0.5, 1],   # only used if penalty=elasticnet
-                "clf__max_iter": [1000]
+                "clf__l1_ratio": [0, 0.5, 1],  # only used if penalty=elasticnet
+                "clf__max_iter": [1000],
             },
             # Case 3: liblinear (supports l1 and l2 only)
             {
                 "clf__penalty": ["l1", "l2"],
                 "clf__solver": ["liblinear"],
                 "clf__C": [0.01, 0.1, 1, 10],
-                "clf__max_iter": [1000]
-            }
+                "clf__max_iter": [1000],
+            },
         ],
         "NaiveBayes": {
             # NB has fewer tunable parameters — depends on variant
@@ -171,9 +191,10 @@ def get_param_distributions():
             "clf__iterations": randint(200, 1001),
             "clf__depth": randint(4, 10),
             "clf__learning_rate": uniform(0.01, 0.3),
-            "clf__l2_leaf_reg": randint(1, 10)
-        }
+            "clf__l2_leaf_reg": randint(1, 10),
+        },
     }
+
 
 def get_n_iter_random_per_clf():
     """
@@ -184,11 +205,8 @@ def get_n_iter_random_per_clf():
         "GradientBoosting": 75,
         "XGB": 75,
         "LGBM": 75,
-        "CatBoost": 75
+        "CatBoost": 75,
     }
-
-
-
 
 
 # ==================================================
@@ -197,6 +215,7 @@ def get_n_iter_random_per_clf():
 
 # Helper to switch between sampler (SMOTE) + class weights in param space
 # ⚠️ Currently unused: retained for future sensitivity analyses
+
 
 def _with_sampler_and_weights(name, base_space, y_train, random_state=42):
     """
@@ -251,6 +270,7 @@ def _with_sampler_and_weights(name, base_space, y_train, random_state=42):
 
     return final
 
+
 def _decision_or_proba(estimator, X):
     if hasattr(estimator, "decision_function"):
         s = estimator.decision_function(X)
@@ -258,6 +278,7 @@ def _decision_or_proba(estimator, X):
     if hasattr(estimator, "predict_proba"):
         return estimator.predict_proba(X)[:, 1]
     return estimator.predict(X)  # last resort
+
 
 def auc_scorer(estimator, X, y):
     """Return AUROC or NaN safely inside GridSearchCV."""
@@ -283,21 +304,35 @@ def auc_scorer(estimator, X, y):
     except Exception:
         return np.nan
 
+
 # ==================================================
 # 4. Mixed Search with Repeated CV
 # ==================================================
 
+
 def repeated_cv_with_mixed_search(
-    X_train, y_train, X_test, y_test,
-    classifiers, param_spaces,
-    X_train_smote=None, y_train_smote=None,
-    n_splits=5, n_repeats=10, scoring=None,
-    n_jobs=-1, random_state=42, verbose=1,
-    n_iter_random=None, n_iter_random_per_clf=None,
-    save_prefix: str = resolve_path("results/models/original/"),   # e.g., results/models/{original|w2v}/
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    classifiers,
+    param_spaces,
+    X_train_smote=None,
+    y_train_smote=None,
+    n_splits=5,
+    n_repeats=10,
+    scoring=None,
+    n_jobs=-1,
+    random_state=42,
+    verbose=1,
+    n_iter_random=None,
+    n_iter_random_per_clf=None,
+    save_prefix: str = resolve_path(
+        "results/models/original/"
+    ),  # e.g., results/models/{original|w2v}/
     descriptive_cv=True,
-    mode="original",                          # "original" or "w2v"
-    log_mlflow=True                           # <-- Flag for flexible logging
+    mode="original",  # "original" or "w2v"
+    log_mlflow=True,  # <-- Flag for flexible logging
 ):
     """
     Hyperparameters selected on NON-SMOTE data via mixed search (Grid/Random).
@@ -320,7 +355,6 @@ def repeated_cv_with_mixed_search(
     # Create a dedicated subfolder for this run
     run_dir = os.path.join(save_prefix, run_prefix)
     os.makedirs(run_dir, exist_ok=True)
-
 
     results = {}
     summary_rows = []
@@ -348,9 +382,10 @@ def repeated_cv_with_mixed_search(
             exp_id = exp.experiment_id
 
         mlflow.set_experiment(experiment_name)
-        print(f"✅ MLflow tracking initialized under unified experiment '{experiment_name}'")
+        print(
+            f"✅ MLflow tracking initialized under unified experiment '{experiment_name}'"
+        )
         print(f"Tracking URI: {tracking_dir.as_uri()} (Experiment ID: {exp_id})")
-
 
         # Safely end any previous run
         if mlflow.active_run() is not None:
@@ -363,7 +398,7 @@ def repeated_cv_with_mixed_search(
 
     # Set default scoring if not provided
     if scoring is None:
-        scoring = auc_scorer # fallback to direct callable scorer
+        scoring = auc_scorer  # fallback to direct callable scorer
 
     # --------------------------------------------------
     # 2. Hyperparameter search on NON-SMOTE training data
@@ -392,13 +427,14 @@ def repeated_cv_with_mixed_search(
             mlflow.log_param("scoring", scoring)
             mlflow.log_param("n_iter_random", n_iter_random)
 
-
         try:
             # IMPORTANT: No SMOTE step in the search pipeline (selection on non-SMOTE data).
-            pipe = Pipeline([
-                ("clf", clf),
-            ])
-            
+            pipe = Pipeline(
+                [
+                    ("clf", clf),
+                ]
+            )
+
             # Retrieve parameter space normally
             param_space = param_spaces.get(name, {})
 
@@ -407,9 +443,11 @@ def repeated_cv_with_mixed_search(
             # param_space = _with_sampler_and_weights(name, base_space, y_train, random_state)
 
             if name in randomized_models:
-                n_iter = (n_iter_random_per_clf.get(name)
-                            if n_iter_random_per_clf and name in n_iter_random_per_clf
-                            else n_iter_random)
+                n_iter = (
+                    n_iter_random_per_clf.get(name)
+                    if n_iter_random_per_clf and name in n_iter_random_per_clf
+                    else n_iter_random
+                )
                 search = RandomizedSearchCV(
                     estimator=pipe,
                     param_distributions=param_space,
@@ -419,7 +457,7 @@ def repeated_cv_with_mixed_search(
                     n_jobs=n_jobs,
                     refit=True,
                     verbose=verbose,
-                    random_state=random_state
+                    random_state=random_state,
                 )
             else:
                 search = GridSearchCV(
@@ -429,34 +467,47 @@ def repeated_cv_with_mixed_search(
                     scoring=scoring,
                     n_jobs=n_jobs,
                     refit=True,
-                    verbose=verbose
+                    verbose=verbose,
                 )
 
             # Fit CV search on ORIGINAL training data (non-SMOTE)
             import logging
             from joblib import parallel_backend
 
-            logging.getLogger('joblib').setLevel(logging.INFO)
-            with parallel_backend('loky', n_jobs=-1):
+            logging.getLogger("joblib").setLevel(logging.INFO)
+            with parallel_backend("loky", n_jobs=-1):
                 search.fit(X_train, y_train)
-
 
             # ==================================================
             # Special handling for SVC: refit best model with probability=True
             # ==================================================
             if name == "SVC":
-                best_params = {k.replace("clf__", ""): v for k, v in search.best_params_.items()}
+                best_params = {
+                    k.replace("clf__", ""): v for k, v in search.best_params_.items()
+                }
                 try:
-                    print("   Re-training best SVC with probability=True for calibrated AUROC...")
-                    svc_proba = SVC(**best_params, probability=True, tol=1e-3, cache_size=2000, random_state=random_state)
+                    print(
+                        "   Re-training best SVC with probability=True for calibrated AUROC..."
+                    )
+                    svc_proba = SVC(
+                        **best_params,
+                        probability=True,
+                        tol=1e-3,
+                        cache_size=2000,
+                        random_state=random_state,
+                    )
                     svc_proba.fit(X_train, y_train)
-                    search.best_estimator_ = svc_proba  # replace tuned estimator with calibrated version
+                    search.best_estimator_ = (
+                        svc_proba  # replace tuned estimator with calibrated version
+                    )
 
                     if log_mlflow:
                         mlflow.set_tag("svc_refit_with_proba", True)
                 except Exception as e:
-                    print(f"   ⚠️ Warning: SVC refit with probability=True failed ({e}); "
-                        f"falling back to non-probability model.")
+                    print(
+                        f"   ⚠️ Warning: SVC refit with probability=True failed ({e}); "
+                        f"falling back to non-probability model."
+                    )
 
             # --------------------------------------------------
             # 3. Holdout evaluation (non-SMOTE best pipeline)
@@ -472,7 +523,9 @@ def repeated_cv_with_mixed_search(
                 "Classifier": name,
                 "Best Params": search.best_params_,
                 "CV Mean Score": search.best_score_,
-                "CV Std Score": search.cv_results_["std_test_score"][search.best_index_],
+                "CV Std Score": search.cv_results_["std_test_score"][
+                    search.best_index_
+                ],
                 "Holdout ROC-AUC": test_auc,
                 "Holdout Precision": report["1"]["precision"],
                 "Holdout Recall": report["1"]["recall"],
@@ -490,14 +543,22 @@ def repeated_cv_with_mixed_search(
             # --------------------------------------------------
             # All data is pre-scaled — directly run cross_val_score without internal scaler
             if descriptive_cv:
-                print(f"   Performing descriptive StratifiedKFold CV on original training set for {name}...")
-                kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+                print(
+                    f"   Performing descriptive StratifiedKFold CV on original training set for {name}..."
+                )
+                kf = StratifiedKFold(
+                    n_splits=5, shuffle=True, random_state=random_state
+                )
                 auc_scorer = make_scorer(roc_auc_score, needs_proba=True)
 
                 try:
                     cv_scores = []
                     for train_idx, val_idx in kf.split(X_train, y_train):
-                        y_val = y_train.iloc[val_idx] if isinstance(y_train, pd.Series) else y_train[val_idx]
+                        y_val = (
+                            y_train.iloc[val_idx]
+                            if isinstance(y_train, pd.Series)
+                            else y_train[val_idx]
+                        )
                         if len(np.unique(y_val)) < 2:
                             continue  # skip single-class fold
                         X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
@@ -506,38 +567,40 @@ def repeated_cv_with_mixed_search(
                         est_fold.fit(X_tr, y_tr)
                         y_val_pred = _decision_or_proba(est_fold, X_val)
 
-
                         cv_scores.append(roc_auc_score(y_val, y_val_pred))
                     cv_scores = np.array(cv_scores)
 
                 except ValueError as e:
                     # e.g., a fold has a single class (extreme imbalance)
                     summary_row["Descriptive CV Mean AUC"] = np.nan
-                    summary_row["Descriptive CV Std AUC"]  = np.nan
+                    summary_row["Descriptive CV Std AUC"] = np.nan
                     print(f"   Skipping descriptive CV (original): {e}")
                 else:
                     if cv_scores.size == 0 or np.all(np.isnan(cv_scores)):
                         summary_row["Descriptive CV Mean AUC"] = np.nan
-                        summary_row["Descriptive CV Std AUC"]  = np.nan
+                        summary_row["Descriptive CV Std AUC"] = np.nan
                         print("   Descriptive CV AUC: nan ± nan (all folds invalid)")
                     else:
-                        summary_row["Descriptive CV Mean AUC"] = float(np.nanmean(cv_scores))
-                        summary_row["Descriptive CV Std AUC"]  = float(np.nanstd(cv_scores))
-                        print(f"   Descriptive CV AUC: "
+                        summary_row["Descriptive CV Mean AUC"] = float(
+                            np.nanmean(cv_scores)
+                        )
+                        summary_row["Descriptive CV Std AUC"] = float(
+                            np.nanstd(cv_scores)
+                        )
+                        print(
+                            f"   Descriptive CV AUC: "
                             f"{summary_row['Descriptive CV Mean AUC']:.4f} ± "
-                            f"{summary_row['Descriptive CV Std AUC']:.4f}")
+                            f"{summary_row['Descriptive CV Std AUC']:.4f}"
+                        )
 
             # --------------------------------------------------
             # 5. Save classifier CV results + metrics
             # --------------------------------------------------
             results[name] = {
-                "best_estimator": search.best_estimator_,   # already fitted during CV
+                "best_estimator": search.best_estimator_,  # already fitted during CV
                 "best_params": search.best_params_,
                 "cv_results": search.cv_results_,
-                "test_metrics": {
-                    "roc_auc": test_auc,
-                    "classification_report": report
-                }
+                "test_metrics": {"roc_auc": test_auc, "classification_report": report},
             }
 
             # Always save classifier model locally
@@ -551,7 +614,9 @@ def repeated_cv_with_mixed_search(
                 mlflow.log_artifact(model_path, artifact_path="models")
 
             print(f"✅ {name} done. Best params: {search.best_params_}")
-            print(f"   CV ROC-AUC: {search.best_score_:.4f} ± {search.cv_results_['std_test_score'][search.best_index_]:.3f}")
+            print(
+                f"   CV ROC-AUC: {search.best_score_:.4f} ± {search.cv_results_['std_test_score'][search.best_index_]:.3f}"
+            )
             print(f"   Holdout ROC-AUC: {test_auc:.4}")
 
             # --------------------------------------------------
@@ -566,11 +631,17 @@ def repeated_cv_with_mixed_search(
                 "holdout_f1": report["1"]["f1-score"],
             }
             if descriptive_cv:
-                metrics_non_smote["descriptive_cv_mean_auc"] = summary_row["Descriptive CV Mean AUC"]
-                metrics_non_smote["descriptive_cv_std_auc"] = summary_row["Descriptive CV Std AUC"]
+                metrics_non_smote["descriptive_cv_mean_auc"] = summary_row[
+                    "Descriptive CV Mean AUC"
+                ]
+                metrics_non_smote["descriptive_cv_std_auc"] = summary_row[
+                    "Descriptive CV Std AUC"
+                ]
 
             # Always save metrics JSON locally
-            metrics_path = os.path.join(run_dir, f"{run_prefix}_{name}_metrics_non_smote.json")
+            metrics_path = os.path.join(
+                run_dir, f"{run_prefix}_{name}_metrics_non_smote.json"
+            )
             with open(metrics_path, "w") as f:
                 json.dump(metrics_non_smote, f, indent=4)
             print(f"💾 Saved non-SMOTE metrics for {name} to {metrics_path}")
@@ -578,7 +649,10 @@ def repeated_cv_with_mixed_search(
             # --------------------------------------------------
             # 5.5  Retrain/Evaluate this classifier on SMOTE (inside same MLflow run)
             # --------------------------------------------------
-            d_mean, d_std = (None, None)  # defaults if not doing descriptive CV on SMOTE
+            d_mean, d_std = (
+                None,
+                None,
+            )  # defaults if not doing descriptive CV on SMOTE
             if X_train_smote is not None and y_train_smote is not None:
                 best_pipe_smote = clone(search.best_estimator_)
                 best_pipe_smote.fit(X_train_smote, y_train_smote)
@@ -589,18 +663,29 @@ def repeated_cv_with_mixed_search(
                 auc_smote = roc_auc_score(y_test, y_pred_proba_smote)
                 print(f"   SMOTE Holdout ROC-AUC: {auc_smote:.4f}")
 
-
                 # Optional descriptive CV on SMOTE
                 if descriptive_cv:
-                    print(f"   Performing descriptive StratifiedKFold CV on SMOTE training set for {name}...")
-                    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+                    print(
+                        f"   Performing descriptive StratifiedKFold CV on SMOTE training set for {name}..."
+                    )
+                    kf = StratifiedKFold(
+                        n_splits=5, shuffle=True, random_state=random_state
+                    )
                     cv_scores_smote = []
 
-                    for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X_train_smote, y_train_smote), start=1):
-                        y_val = y_train_smote.iloc[val_idx] if isinstance(y_train_smote, pd.Series) else y_train_smote[val_idx]
+                    for fold_idx, (train_idx, val_idx) in enumerate(
+                        kf.split(X_train_smote, y_train_smote), start=1
+                    ):
+                        y_val = (
+                            y_train_smote.iloc[val_idx]
+                            if isinstance(y_train_smote, pd.Series)
+                            else y_train_smote[val_idx]
+                        )
                         # Skip folds that contain only one class
                         if len(np.unique(y_val)) < 2:
-                            print(f"      ⚠️  Skipping fold {fold_idx}: single-class validation fold.")
+                            print(
+                                f"      ⚠️  Skipping fold {fold_idx}: single-class validation fold."
+                            )
                             continue
 
                         X_tr, X_val = (
@@ -614,7 +699,6 @@ def repeated_cv_with_mixed_search(
                             est_fold_smote.fit(X_tr, y_tr)
                             y_val_pred = _decision_or_proba(est_fold_smote, X_val)
 
-
                             auc_val = roc_auc_score(y_val, y_val_pred)
                             cv_scores_smote.append(auc_val)
                         except Exception as e:
@@ -623,11 +707,19 @@ def repeated_cv_with_mixed_search(
 
                     if len(cv_scores_smote) == 0:
                         d_mean, d_std = np.nan, np.nan
-                        print("   Descriptive CV AUC (SMOTE): nan ± nan (all folds invalid)")
+                        print(
+                            "   Descriptive CV AUC (SMOTE): nan ± nan (all folds invalid)"
+                        )
                     else:
-                        d_mean, d_std = float(np.nanmean(cv_scores_smote)), float(np.nanstd(cv_scores_smote))
-                        print(f"   Descriptive CV AUC (SMOTE): {d_mean:.4f} ± {d_std:.4f}")
-                        print(f"   ({len(cv_scores_smote)} valid folds out of {kf.get_n_splits()})")
+                        d_mean, d_std = float(np.nanmean(cv_scores_smote)), float(
+                            np.nanstd(cv_scores_smote)
+                        )
+                        print(
+                            f"   Descriptive CV AUC (SMOTE): {d_mean:.4f} ± {d_std:.4f}"
+                        )
+                        print(
+                            f"   ({len(cv_scores_smote)} valid folds out of {kf.get_n_splits()})"
+                        )
 
                 # Update summary_row with SMOTE stats BEFORE appending it
                 summary_row["Holdout ROC-AUC (SMOTE)"] = auc_smote
@@ -635,20 +727,24 @@ def repeated_cv_with_mixed_search(
                 summary_row["Descriptive CV Std AUC (SMOTE)"] = d_std
 
                 # Save SMOTE metrics JSON locally
-                metrics_smote = {
-                    "holdout_auc_smote": auc_smote
-                }
+                metrics_smote = {"holdout_auc_smote": auc_smote}
                 if descriptive_cv:
                     metrics_smote["descriptive_cv_mean_auc_smote"] = d_mean
                     metrics_smote["descriptive_cv_std_auc_smote"] = d_std
 
-                metrics_path_sm = os.path.join(run_dir, f"{run_prefix}_{name}_metrics_smote.json")
-                
+                metrics_path_sm = os.path.join(
+                    run_dir, f"{run_prefix}_{name}_metrics_smote.json"
+                )
+
                 # 💾 Save per-classifier SMOTE model
-                smote_model_path_individual = os.path.join(run_dir, f"{run_prefix}_{name}_smote_model.pkl")
+                smote_model_path_individual = os.path.join(
+                    run_dir, f"{run_prefix}_{name}_smote_model.pkl"
+                )
                 with open(smote_model_path_individual, "wb") as f:
                     pickle.dump(best_pipe_smote, f)
-                print(f"💾 Saved SMOTE-trained {name} model to {smote_model_path_individual}")
+                print(
+                    f"💾 Saved SMOTE-trained {name} model to {smote_model_path_individual}"
+                )
                 # Track SMOTE model in results dict
                 results[name]["best_estimator_smote"] = best_pipe_smote
                 results[name]["smote_metrics"] = metrics_smote
@@ -658,13 +754,23 @@ def repeated_cv_with_mixed_search(
                 print(f"💾 Saved SMOTE metrics for {name} to {metrics_path_sm}")
 
                 if log_mlflow:
-                    mlflow.log_metrics({
-                        "holdout_roc_auc_smote": auc_smote,
-                        **({} if not descriptive_cv else {
-                            "descriptive_cv_mean_auc_smote": d_mean if d_mean is not None else np.nan,
-                            "descriptive_cv_std_auc_smote": d_std if d_std is not None else np.nan
-                        })
-                    })
+                    mlflow.log_metrics(
+                        {
+                            "holdout_roc_auc_smote": auc_smote,
+                            **(
+                                {}
+                                if not descriptive_cv
+                                else {
+                                    "descriptive_cv_mean_auc_smote": d_mean
+                                    if d_mean is not None
+                                    else np.nan,
+                                    "descriptive_cv_std_auc_smote": d_std
+                                    if d_std is not None
+                                    else np.nan,
+                                }
+                            ),
+                        }
+                    )
                     mlflow.log_artifact(metrics_path_sm, artifact_path="metrics")
             if log_mlflow:
                 mlflow.set_tag("smote_cv_auc_summary", f"{d_mean:.4f} ± {d_std:.4f}")
@@ -699,23 +805,26 @@ def repeated_cv_with_mixed_search(
             if mlflow_cm:
                 mlflow.end_run()
                 print(f"🏁 MLflow run for '{name}' closed cleanly.")
-    
+
     # --------------------------------------------------
     # 6. Build summary table (non-SMOTE results only)
     # --------------------------------------------------
-    summary_df = pd.DataFrame(summary_rows).sort_values(by="Holdout ROC-AUC", ascending=False)
+    summary_df = pd.DataFrame(summary_rows).sort_values(
+        by="Holdout ROC-AUC", ascending=False
+    )
 
     # --------------------------------------------------
     # 7. Save & evaluate best NON-SMOTE model
     # --------------------------------------------------
-    print("\n📌 Evaluating all classifiers on holdout test set using CV-trained pipelines:")
+    print(
+        "\n📌 Evaluating all classifiers on holdout test set using CV-trained pipelines:"
+    )
     for name in classifiers.keys():
         best_pipe = results[name]["best_estimator"]
         y_pred_proba = _decision_or_proba(best_pipe, X_test)
 
         auc = roc_auc_score(y_test, y_pred_proba)
         print(f"{name}: Holdout ROC-AUC = {auc:.4f}")
-
 
     best_idx = summary_df["Holdout ROC-AUC"].idxmax()
     best_model_name = summary_df.loc[best_idx, "Classifier"]
@@ -724,14 +833,15 @@ def repeated_cv_with_mixed_search(
     best_pipeline = results[best_model_name]["best_estimator"]
     test_auc = summary_df.loc[best_idx, "Holdout ROC-AUC"]
 
-    print(f"\n🏆 Best classifier (no SMOTE) = {best_model_name}, Holdout ROC-AUC = {test_auc:.4f}")
+    print(
+        f"\n🏆 Best classifier (no SMOTE) = {best_model_name}, Holdout ROC-AUC = {test_auc:.4f}"
+    )
 
     # Save the same fitted pipeline (no refit)
     best_model_path = os.path.join(run_dir, f"{run_prefix}_best_model.pkl")
     with open(best_model_path, "wb") as f:
         pickle.dump(best_pipeline, f)
     print(f"💾 Saved best model (no SMOTE) to {best_model_path}")
-
 
     # --------------------------------------------------
     # 8. Evaluate and save best SMOTE model
@@ -744,7 +854,9 @@ def repeated_cv_with_mixed_search(
         best_smote_name = summary_df.loc[best_smote_idx, "Classifier"]
         best_smote_auc = summary_df.loc[best_smote_idx, "Holdout ROC-AUC (SMOTE)"]
 
-        print(f"🏆 Best SMOTE-trained classifier by holdout AUC = {best_smote_name}, AUC = {best_smote_auc:.4f}")
+        print(
+            f"🏆 Best SMOTE-trained classifier by holdout AUC = {best_smote_name}, AUC = {best_smote_auc:.4f}"
+        )
 
         # Final evaluation of best SMOTE-trained model
         final_smote_model = clone(results[best_smote_name]["best_estimator"])
@@ -752,7 +864,9 @@ def repeated_cv_with_mixed_search(
         y_test_proba = _decision_or_proba(final_smote_model, X_test)
 
         final_smote_auc = roc_auc_score(y_test, y_test_proba)
-        print(f"🎯 Final evaluation of best SMOTE-trained classifier = {best_smote_name}, ROC-AUC = {final_smote_auc:.4f}")
+        print(
+            f"🎯 Final evaluation of best SMOTE-trained classifier = {best_smote_name}, ROC-AUC = {final_smote_auc:.4f}"
+        )
 
         summary_df.loc[
             summary_df["Classifier"] == best_smote_name, "Final Holdout ROC-AUC (SMOTE)"
@@ -768,7 +882,9 @@ def repeated_cv_with_mixed_search(
             "best_smote_classifier": best_smote_name,
             "final_holdout_auc_smote": final_smote_auc,
         }
-        final_smote_metrics_path = os.path.join(run_dir, f"{run_prefix}_best_smote_metrics.json")
+        final_smote_metrics_path = os.path.join(
+            run_dir, f"{run_prefix}_best_smote_metrics.json"
+        )
         with open(final_smote_metrics_path, "w") as f:
             json.dump(final_smote_metrics, f, indent=4)
         print(f"💾 Saved final SMOTE metrics to {final_smote_metrics_path}")
@@ -778,15 +894,20 @@ def repeated_cv_with_mixed_search(
             mlflow.log_artifact(final_smote_metrics_path, artifact_path="metrics")
 
     else:
-        print("ℹ️ No SMOTE metrics available in summary_df; skipping best-SMOTE selection.")
-
+        print(
+            "ℹ️ No SMOTE metrics available in summary_df; skipping best-SMOTE selection."
+        )
 
     # --------------------------------------------------
     # 9. Save full results (summary + dict)
     # --------------------------------------------------
-    full_summary_csv_path = os.path.join(run_dir, f"{run_prefix}_full_summary_with_smote.csv")
+    full_summary_csv_path = os.path.join(
+        run_dir, f"{run_prefix}_full_summary_with_smote.csv"
+    )
     summary_df.to_csv(full_summary_csv_path, index=False)
-    print(f"💾 Saved full summary including original and SMOTE metrics to {full_summary_csv_path}")
+    print(
+        f"💾 Saved full summary including original and SMOTE metrics to {full_summary_csv_path}"
+    )
 
     full_results_path = os.path.join(run_dir, f"{run_prefix}_full.pkl")
     with open(full_results_path, "wb") as f:
@@ -820,7 +941,9 @@ def repeated_cv_with_mixed_search(
     # --------------------------------------------------
     # Log total runtime for the full mode (e.g., 'original' or 'w2v_radiology')
     total_runtime_minutes = (time.time() - overall_start) / 60
-    print(f"⏱️  Total runtime for mode '{mode}': {total_runtime_minutes:.2f} minutes\n\n---\n")
+    print(
+        f"⏱️  Total runtime for mode '{mode}': {total_runtime_minutes:.2f} minutes\n\n---\n"
+    )
 
     if log_mlflow:
         mlflow.log_metric("total_runtime_minutes", total_runtime_minutes)
@@ -831,11 +954,15 @@ def repeated_cv_with_mixed_search(
 
     return results, summary_df
 
+
 # ==================================================
 # 4. Save/Load Utilities
 # ==================================================
 
-def save_all_classifiers(results, save_prefix="results/models/original/", mode="original"):
+
+def save_all_classifiers(
+    results, save_prefix="results/models/original/", mode="original"
+):
     """
     Save all best_estimator models from results dict to disk with timestamped filenames.
 
@@ -859,7 +986,9 @@ def save_all_classifiers(results, save_prefix="results/models/original/", mode="
             print(f"💾 Saved {name} model to {model_path}")
 
 
-def load_all_classifiers(save_prefix="results/models/original/", timestamp=None, mode="original"):
+def load_all_classifiers(
+    save_prefix="results/models/original/", timestamp=None, mode="original"
+):
     """
     Load all classifier models from a specific run directory.
 
@@ -878,7 +1007,7 @@ def load_all_classifiers(save_prefix="results/models/original/", timestamp=None,
         run_dirs = sorted(
             glob.glob(os.path.join(save_prefix, f"{mode}_*")),
             key=os.path.getmtime,
-            reverse=True
+            reverse=True,
         )
         if not run_dirs:
             raise FileNotFoundError(f"No saved runs found under {save_prefix}.")
@@ -906,6 +1035,7 @@ def load_all_classifiers(save_prefix="results/models/original/", timestamp=None,
 # 5. Helper to Neutralize Class Weights for SMOTE Retrain
 # ==================================================
 
+
 def _neutralize_weights_for_smote(pipe):
     """
     Return a cloned estimator with class-weighting neutralized for SMOTE retrain.
@@ -913,6 +1043,7 @@ def _neutralize_weights_for_smote(pipe):
     Works with sklearn Pipeline or a bare estimator.
     """
     from sklearn.base import clone
+
     est = clone(pipe)
 
     # If it's a pipeline, grab the classifier step name

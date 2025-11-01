@@ -43,10 +43,13 @@ from pathlib import Path
 from datetime import datetime
 from src.utils import resolve_path
 
-def export_summary(summary_df, mode="original", save_prefix="results/evaluation", include_time=False):
+
+def export_summary(
+    summary_df, mode="original", save_prefix="results/evaluation", include_time=False
+):
     """
     Export summary DataFrame to results/evaluation/{date}/ as a single CSV per mode.
-    
+
     Example output:
         results/evaluation/20251013/original_baseline_summary.csv
     """
@@ -64,8 +67,6 @@ def export_summary(summary_df, mode="original", save_prefix="results/evaluation"
     print(f"✅ Summary exported to {out_path}")
 
     return out_path
-
-
 
 
 # =========================================================
@@ -104,13 +105,22 @@ def evaluate_classifier(model, X_test, y_test, clf_name, mode):
         "Precision": precision_score(y_test, y_pred, zero_division=0),
         "Recall": recall_score(y_test, y_pred, zero_division=0),
         "F1": f1_score(y_test, y_pred, zero_division=0),
-        "Brier": brier_score_loss(y_test, y_proba)
+        "Brier": brier_score_loss(y_test, y_proba),
     }
-    return {k: round(v, 4) if isinstance(v, (float, np.floating)) else v for k, v in metrics.items()}
+    return {
+        k: round(v, 4) if isinstance(v, (float, np.floating)) else v
+        for k, v in metrics.items()
+    }
 
 
-def evaluate_all_models(models, X_test, y_test, mode="original",
-                        save_prefix="results/evaluation", include_time=False):
+def evaluate_all_models(
+    models,
+    X_test,
+    y_test,
+    mode="original",
+    save_prefix="results/evaluation",
+    include_time=False,
+):
     """
     Evaluate all models and save results under results/evaluation/{date}/.
 
@@ -144,14 +154,16 @@ def evaluate_all_models(models, X_test, y_test, mode="original",
             # binary threshold at 0.5 for classification metrics
             y_pred = (y_pred_proba > 0.5).astype(int)
 
-            results.append({
-                "Classifier": name,
-                "AUROC": auroc,
-                "Accuracy": accuracy_score(y_test, y_pred),
-                "Precision": precision_score(y_test, y_pred, zero_division=0),
-                "Recall": recall_score(y_test, y_pred),
-                "F1": f1_score(y_test, y_pred)
-            })
+            results.append(
+                {
+                    "Classifier": name,
+                    "AUROC": auroc,
+                    "Accuracy": accuracy_score(y_test, y_pred),
+                    "Precision": precision_score(y_test, y_pred, zero_division=0),
+                    "Recall": recall_score(y_test, y_pred),
+                    "F1": f1_score(y_test, y_pred),
+                }
+            )
 
         except Exception as e:
             print(f"⚠️ Error evaluating {name}: {e}")
@@ -171,9 +183,11 @@ def evaluate_all_models(models, X_test, y_test, mode="original",
     print(f"✅ Evaluation summary saved to {out_path}")
     return df
 
+
 # ======================================================
 #  Unwrap Nested Model Dicts Into Pipelines
 # ======================================================
+
 
 def unwrap_best_estimators_smote(models_dict):
     """
@@ -204,6 +218,7 @@ def unwrap_best_estimators_smote(models_dict):
             unwrapped[name] = obj
     return unwrapped
 
+
 def unwrap_best_estimators_non_smote(models_dict):
     """Force extraction of non-SMOTE best estimators."""
     out = {}
@@ -215,20 +230,32 @@ def unwrap_best_estimators_non_smote(models_dict):
     return out
 
 
-
 # =========================================================
 # 3A.  Custom Metrics (F2)
 # =========================================================
 def f2_score(precision, recall):
     """Compute F2 score (recall-weighted)."""
-    return 5 * (precision * recall) / ((4 * precision) + recall) if (precision + recall) > 0 else 0.0
+    return (
+        5 * (precision * recall) / ((4 * precision) + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
 
 
 # =========================================================
 # 3B.  Extended Evaluation (Train + Test)
 # =========================================================
-def evaluate_classifier_extended(model, X_train, y_train, X_test, y_test,
-                                 clf_name, mode="original_baseline", threshold=0.5, verbose=True):
+def evaluate_classifier_extended(
+    model,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    clf_name,
+    mode="original_baseline",
+    threshold=0.5,
+    verbose=True,
+):
     """
     Evaluate both train and test metrics including F2 score.
     Mirrors evaluate_all_models() scoring logic for consistency
@@ -250,7 +277,7 @@ def evaluate_classifier_extended(model, X_train, y_train, X_test, y_test,
 
     # convert inputs to numpy arrays to ignore feature names
     X_train_np = X_train.to_numpy() if hasattr(X_train, "to_numpy") else X_train
-    X_test_np  = X_test.to_numpy()  if hasattr(X_test, "to_numpy")  else X_test
+    X_test_np = X_test.to_numpy() if hasattr(X_test, "to_numpy") else X_test
 
     # --- Predictions and probabilities ---
     y_scores_train = get_scores(model, X_train_np)
@@ -261,8 +288,12 @@ def evaluate_classifier_extended(model, X_train, y_train, X_test, y_test,
 
     # --- Training metrics ---
     prec_tr = precision_score(y_train, y_pred_train, zero_division=0)
-    rec_tr  = recall_score(y_train, y_pred_train, zero_division=0)
-    auc_tr  = np.nan if np.allclose(y_scores_train, y_scores_train[0]) else roc_auc_score(y_train, y_scores_train)
+    rec_tr = recall_score(y_train, y_pred_train, zero_division=0)
+    auc_tr = (
+        np.nan
+        if np.allclose(y_scores_train, y_scores_train[0])
+        else roc_auc_score(y_train, y_scores_train)
+    )
 
     metrics_train = {
         "AUC_train": auc_tr,
@@ -270,13 +301,17 @@ def evaluate_classifier_extended(model, X_train, y_train, X_test, y_test,
         "F1_train": f1_score(y_train, y_pred_train, zero_division=0),
         "Precision_train": prec_tr,
         "Recall_train": rec_tr,
-        "F2_train": f2_score(prec_tr, rec_tr)
+        "F2_train": f2_score(prec_tr, rec_tr),
     }
 
     # --- Test metrics ---
     prec_te = precision_score(y_test, y_pred_test, zero_division=0)
-    rec_te  = recall_score(y_test, y_pred_test, zero_division=0)
-    auc_te  = np.nan if np.allclose(y_scores_test, y_scores_test[0]) else roc_auc_score(y_test, y_scores_test)
+    rec_te = recall_score(y_test, y_pred_test, zero_division=0)
+    auc_te = (
+        np.nan
+        if np.allclose(y_scores_test, y_scores_test[0])
+        else roc_auc_score(y_test, y_scores_test)
+    )
 
     metrics_test = {
         "AUC_test": auc_te,
@@ -284,7 +319,7 @@ def evaluate_classifier_extended(model, X_train, y_train, X_test, y_test,
         "F1_test": f1_score(y_test, y_pred_test, zero_division=0),
         "Precision_test": prec_te,
         "Recall_test": rec_te,
-        "F2_test": f2_score(prec_te, rec_te)
+        "F2_test": f2_score(prec_te, rec_te),
     }
 
     # --- Combine and print summary ---
@@ -303,6 +338,7 @@ def evaluate_classifier_extended(model, X_train, y_train, X_test, y_test,
         for k, v in combined.items()
     }
 
+
 # =========================================================
 # 4.  ROC & PR Curves (Per Dataset)
 # =========================================================
@@ -318,13 +354,15 @@ def plot_roc_curves(models, X_test, y_test, mode):
         except Exception as e:
             print(f"[skip] {name}: {e}")
     plt.plot([0, 1], [0, 1], "--", color="gray")
-    plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
     plt.title(f"ROC Curves – {mode}")
     plt.legend(loc="lower right", fontsize=9)
     plt.grid(alpha=0.3)
     path = Path(resolve_path(f"results/figures/{mode}/ROC_all.png"))
     path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(path, dpi=300, bbox_inches="tight"); plt.close()
+    plt.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close()
     display(Image(filename=f"{path}"))
     print(f"📈 ROC curves saved → {path}")
 
@@ -340,13 +378,15 @@ def plot_pr(models, X_test, y_test, mode):
             plt.plot(recall, precision, lw=2, label=f"{name} (AUC={pr_auc:.2f})")
         except Exception as e:
             print(f"[skip] {name}: {e}")
-    plt.xlabel("Recall"); plt.ylabel("Precision")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
     plt.title(f"Precision–Recall Curves – {mode}")
     plt.legend(loc="lower left", fontsize=9)
     plt.grid(alpha=0.3)
     path = Path(resolve_path(f"results/figures/{mode}/PR_all.png"))
     path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(path, dpi=300, bbox_inches="tight"); plt.close()
+    plt.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close()
     display(Image(filename=f"{path}"))
     print(f"📊 PR curves saved → {path}")
 
@@ -354,9 +394,12 @@ def plot_pr(models, X_test, y_test, mode):
 # =========================================================
 # 5.  Multi-Dataset Comparisons
 # =========================================================
-def plot_roc_across_datasets(models_dicts: List[Dict[str, Any]],
-                             dataset_labels: List[str],
-                             X_tests: List, y_tests: List):
+def plot_roc_across_datasets(
+    models_dicts: List[Dict[str, Any]],
+    dataset_labels: List[str],
+    X_tests: List,
+    y_tests: List,
+):
     """Compare ROC curves across dataset modes."""
     plt.figure(figsize=(12, 10))
     legend_entries = []
@@ -373,13 +416,15 @@ def plot_roc_across_datasets(models_dicts: List[Dict[str, Any]],
         handles.append(plt.Line2D([0], [0]))
         labels.append(lbl)
     plt.plot([0, 1], [0, 1], "--", color="gray")
-    plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
     plt.title("ROC Comparison Across Datasets")
     plt.legend(handles, labels, loc="lower right", fontsize=9)
     plt.grid(alpha=0.3)
     path = resolve_path("results/figures/ROC_comparison_across_datasets.png")
     path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(path, dpi=300, bbox_inches="tight"); plt.close()
+    plt.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close()
     print(f"📉 Multi-dataset ROC comparison saved → {path}")
 
 
@@ -399,7 +444,7 @@ def plot_bar_comparison(
 ):
     """
     Generalized bar plotting utility for evaluation summaries.
-    
+
     Can operate in two modes:
       (1) Model-based comparison across datasets (uses model dicts + X/y).
       (2) DataFrame-based plotting (e.g., ΔAUROC summary).
@@ -435,14 +480,22 @@ def plot_bar_comparison(
         bar_width = 0.8 / n_datasets
         x = np.arange(len(classifiers))
         plt.figure(figsize=(12, 6))
-        for i, (models, label, X, y) in enumerate(zip(all_models, dataset_labels, X_tests, y_tests)):
+        for i, (models, label, X, y) in enumerate(
+            zip(all_models, dataset_labels, X_tests, y_tests)
+        ):
             vals = []
             for name in classifiers:
                 mdl = models[name]
-                y_p = mdl.predict_proba(X)[:, 1] if hasattr(mdl, "predict_proba") else mdl.decision_function(X)
+                y_p = (
+                    mdl.predict_proba(X)[:, 1]
+                    if hasattr(mdl, "predict_proba")
+                    else mdl.decision_function(X)
+                )
                 vals.append(roc_auc_score(y, y_p) if metric == "roc_auc" else np.nan)
             plt.bar(x + i * bar_width, vals, width=bar_width, label=label)
-        plt.xticks(x + bar_width * (n_datasets - 1) / 2, classifiers, rotation=45, ha="right")
+        plt.xticks(
+            x + bar_width * (n_datasets - 1) / 2, classifiers, rotation=45, ha="right"
+        )
         plt.ylabel(ylabel or metric.upper())
         plt.title(title or f"{metric.upper()} Comparison Across Datasets")
         plt.legend()
@@ -458,7 +511,9 @@ def plot_bar_comparison(
         plt.ylabel(ylabel or value_col)
         plt.title(title or f"{value_col} Comparison")
     else:
-        raise ValueError("Either provide (all_models + X_tests + y_tests) or (data + value_col).")
+        raise ValueError(
+            "Either provide (all_models + X_tests + y_tests) or (data + value_col)."
+        )
 
     # ─────────────── Final Formatting ───────────────
     plt.grid(axis="y", alpha=0.3)
@@ -467,6 +522,7 @@ def plot_bar_comparison(
     # Save and display
     if save_path:
         from src.utils import resolve_path
+
         path = resolve_path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(path, dpi=300, bbox_inches="tight")
@@ -476,7 +532,10 @@ def plot_bar_comparison(
     else:
         plt.show()
 
-def plot_delta_auroc_bar(summary_df, delta_col="Δ_AUROC_generalization", save_path=None):
+
+def plot_delta_auroc_bar(
+    summary_df, delta_col="Δ_AUROC_generalization", save_path=None
+):
     """Plot ΔAUROC bar chart across classifiers."""
     import matplotlib.pyplot as plt
     import numpy as np
@@ -502,7 +561,6 @@ def plot_delta_auroc_bar(summary_df, delta_col="Δ_AUROC_generalization", save_p
         plt.show()
 
 
-
 # =========================================================
 # 6.  Feature Importance (Tree Models)
 # =========================================================
@@ -518,8 +576,11 @@ def plot_top_features(tree_model_pipe, top_n=15, mode="original"):
         names = clf.feature_names_in_
     else:
         names = [f"feature_{i}" for i in range(clf.n_features_in_)]
-    df = (pd.DataFrame({"feature": names, "importance": clf.feature_importances_})
-          .sort_values("importance", ascending=False).head(top_n))
+    df = (
+        pd.DataFrame({"feature": names, "importance": clf.feature_importances_})
+        .sort_values("importance", ascending=False)
+        .head(top_n)
+    )
     plt.figure(figsize=(8, 6))
     plt.barh(df["feature"][::-1], df["importance"][::-1], color="skyblue")
     plt.xlabel("Feature Importance")
@@ -527,7 +588,8 @@ def plot_top_features(tree_model_pipe, top_n=15, mode="original"):
     plt.tight_layout()
     path = resolve_path(f"results/figures/{mode}/TopFeatures_{type(clf).__name__}.png")
     path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(path, dpi=300, bbox_inches="tight"); plt.close()
+    plt.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close()
     print(f"🌳 Feature-importance plot saved → {path}")
 
 
@@ -541,16 +603,23 @@ def plot_shap_summary(tree_model_pipe, X_sample, top_n=15, mode="original"):
         raise TypeError(f"{type(clf).__name__} not supported for SHAP explainability")
     explainer = shap.Explainer(clf, X_sample)
     shap_vals = explainer(X_sample)
-    shap.summary_plot(shap_vals, X_sample, max_display=top_n, plot_type="bar", show=False)
+    shap.summary_plot(
+        shap_vals, X_sample, max_display=top_n, plot_type="bar", show=False
+    )
     path = resolve_path(f"results/figures/{mode}/SHAP_{type(clf).__name__}.png")
-    plt.savefig(path, dpi=300, bbox_inches="tight"); plt.close()
+    plt.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close()
     print(f"🧠 SHAP summary saved → {path}")
+
 
 # =========================================================
 # 8. SHAP Dependence Plot Helper
 # =========================================================
 
-def plot_shap_dependence(shap_values, X, feature_name, clf_name, mode, save_dir="results/figures/shap/"):
+
+def plot_shap_dependence(
+    shap_values, X, feature_name, clf_name, mode, save_dir="results/figures/shap/"
+):
     """
     Generate and save a SHAP dependence plot for a given feature.
 
@@ -569,16 +638,13 @@ def plot_shap_dependence(shap_values, X, feature_name, clf_name, mode, save_dir=
     save_dir : str, optional
         Directory to save the dependence plot (default: results/figures/shap/).
     """
-    save_path = resolve_path(f"{save_dir}/shap_dependence_{mode}_{clf_name}_{feature_name}.png")
+    save_path = resolve_path(
+        f"{save_dir}/shap_dependence_{mode}_{clf_name}_{feature_name}.png"
+    )
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        shap.dependence_plot(
-            feature_name,
-            shap_values.values,
-            X,
-            show=False
-        )
+        shap.dependence_plot(feature_name, shap_values.values, X, show=False)
         plt.title(f"Dependence: {feature_name} ({clf_name}, {mode})")
         plt.tight_layout()
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
@@ -586,5 +652,3 @@ def plot_shap_dependence(shap_values, X, feature_name, clf_name, mode, save_dir=
         print(f"📈 Saved SHAP dependence plot → {save_path}")
     except Exception as e:
         print(f"⚠️ Could not create SHAP dependence plot for {feature_name}: {e}")
-
-    
