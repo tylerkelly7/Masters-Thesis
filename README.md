@@ -23,7 +23,9 @@ The pipeline integrates:
 - Model evaluation and statistical tests
 - Deployment via API (FastAPI/Flask demo)
 
-<!-->
+---
+
+<!--
 - **Goal:** [Short description of the prediction or classification task]
 - **Dataset:** [Name + link if public; instructions if restricted]
 - **Tech stack:** Python, scikit-learn, XGBoost, PyTorch, SHAP, Streamlit
