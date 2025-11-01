@@ -59,14 +59,13 @@ The pipeline integrates:
 - Results visualization and interpretation
 
 ---
-
+<!--
 ## 🏗️ Project Architecture
 
 ![Architecture](docs/architecture.png)
 
 ---
 
-<!--
 ## 📊 Results
 
 Internal AUROC: [to be added]
